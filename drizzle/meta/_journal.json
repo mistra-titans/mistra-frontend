@@ -78,6 +78,13 @@
       "when": 1754933362287,
       "tag": "0010_nasty_cobalt_man",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1754934068657,
+      "tag": "0011_left_richard_fisk",
+      "breakpoints": true
     }
   ]
 }
