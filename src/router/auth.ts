@@ -31,7 +31,7 @@ export const AUTH_ROUTER = new Elysia({
         return INTERNAL_SERVER_ERROR("User registration failed");
       }
 
-      return SUCCESS(registered[0], "User registered successfully");
+      return SUCCESS({...registered[0], password: undefined}, "User registered successfully");
 
     } catch (error) {
       console.error("Error during registration:", error);
@@ -105,6 +105,10 @@ export const AUTH_ROUTER = new Elysia({
       console.error("Error during logout:", error);
       return INTERNAL_SERVER_ERROR("Logout failed");
     }
+  }, {
+    detail: {
+      summary: "Logout a user",
+    }
   })
   .use(AuthMiddleware)
   .post("/refresh", async ({ user, jwt, cookie: { auth } }) => {
@@ -126,10 +130,15 @@ export const AUTH_ROUTER = new Elysia({
       console.error("Error during token refresh:", error);
       return INTERNAL_SERVER_ERROR("Token refresh failed");
     }
-  }, { userAuth: true })
+  }, {
+    userAuth: true,
+    detail: {
+      summary: "Refresh user token",
+    }
+  })
 
   .get("/profile", async ({ user }) => {
-    return SUCCESS(user, "User profile retrieved successfully");
+    return SUCCESS({ ...user, password: undefined }, "User profile retrieved successfully");
   }, {
     userAuth: true,
     detail: {

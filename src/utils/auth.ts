@@ -20,7 +20,6 @@ export const AuthMiddleware = new Elysia()
           if (!_user) {
             throw new Error("Undefined")
           }
-          console.log("USER   ", _user)
           return {
             user: _user
           }
