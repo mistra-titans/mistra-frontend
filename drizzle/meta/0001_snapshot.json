@@ -1,6 +1,6 @@
 {
-  "id": "c768d3d5-75d5-41bb-bd8f-c8dd24e663b5",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "ad7ff95c-258d-437a-9090-befa2d9b3ea1",
+  "prevId": "c768d3d5-75d5-41bb-bd8f-c8dd24e663b5",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -12,6 +12,12 @@
           "name": "id",
           "type": "serial",
           "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
           "notNull": true
         },
         "amount_base": {
