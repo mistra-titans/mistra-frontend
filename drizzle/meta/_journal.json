@@ -43,6 +43,27 @@
       "when": 1754931068240,
       "tag": "0005_productive_deadpool",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1754931279581,
+      "tag": "0006_freezing_daredevil",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1754931294308,
+      "tag": "0007_futuristic_kate_bishop",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1754931313757,
+      "tag": "0008_striped_blue_marvel",
+      "breakpoints": true
     }
   ]
 }
