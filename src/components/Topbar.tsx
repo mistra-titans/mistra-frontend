@@ -1,7 +1,6 @@
 import React from "react";
 import MenuIcon from "@mui/icons-material/Menu";
-import NotificationsIcon from "@mui/icons-material/Notifications";
-import SettingsIcon from "@mui/icons-material/Settings";
+// import NotificationsIcon from "@mui/icons-material/Notifications";
 
 interface TopbarProps {
   title: string;
@@ -23,16 +22,22 @@ const Topbar: React.FC<TopbarProps> = ({ title, onMenuClick }) => (
       <span className="text-xl font-semibold text-gray-800">{title}</span>
     </div>
     <div className="flex items-center gap-6">
-      {/* Font Awesome icons */}
-      <button className="text-gray-400 hover:text-[#8093EB] text-2xl">
-        <NotificationsIcon fontSize="inherit" />
-      </button>
-      <button className="text-gray-400 hover:text-[#8093EB] text-2xl">
-        <SettingsIcon fontSize="inherit" />
-      </button>
-      <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-lg">
+      <div className="i-solar:user-circle-bold size-8">
         <span>A</span>
       </div>
+      {/* <div
+        className="ml-0 font-bold text-lg  tracking-wide"
+       
+      >
+        Papa Yaw
+      </div> */}
+
+      {/* <button className="text-gray-400 hover:text-[#8093EB] text-2xl">
+           <div className="i-solar:point-on-map-perspective-bold-duotone size-5"></div>
+      </button>
+      <button className="text-gray-400 hover:text-[#8093EB] text-2xl">
+          <div className="i-solar:point-on-map-perspective-bold-duotone size-5"></div>
+      </button> */}
     </div>
   </header>
 );

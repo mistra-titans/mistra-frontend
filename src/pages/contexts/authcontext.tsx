@@ -1,24 +1,29 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import axios from 'axios';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface User {
   id: string;
   email: string;
   firstname: string;
   lastname: string;
+  phone?: string;
 }
 
 interface AuthResponse {
   success: boolean;
   message?: string;
+  user?: User;
+  token?: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<AuthResponse>;
-  signup: (email: string, password: string, firstname: string, lastname: string) => Promise<AuthResponse>;
+  login: (data: { phone_or_email: string; password: string }) => Promise<AuthResponse>;
+  signup: (data: { phone: string; first_name: string; last_name: string; email: string; password: string }) => Promise<AuthResponse>;
   logout: () => void;
-  resetPassword: (email: string) => Promise<AuthResponse>;
-  verifyEmail: (code: string) => Promise<AuthResponse>;
   loading: boolean;
 }
 
@@ -34,62 +39,61 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    // Check for existing session
-    const savedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
-    
-    if (savedUser && token) {
-      setUser(JSON.parse(savedUser));
-    }
-    setLoading(false);
-  }, []);
+ useEffect(() => {
+  const savedUser = localStorage.getItem('user');
+  const token = localStorage.getItem('token');
+  // Only parse if savedUser and token are not null, empty, or "undefined"
+  if (
+    savedUser &&
+    token &&
+    savedUser !== "undefined" &&
+    token !== "undefined"
+  ) {
+    setUser(JSON.parse(savedUser));
+  }
+}, []);
+  // React Query mutations using axios
+  const signupMutation = useMutation({
+    mutationFn: async (data: { phone: string; first_name: string; last_name: string; email: string; password: string }) => {
+      const res = await axios.post(`${API_BASE_URL}/api/auth/register`, data);
+      return res.data;
+    },
+  });
 
-  const login = async (email: string, password: string): Promise<AuthResponse> => {
+  const loginMutation = useMutation({
+    mutationFn: async (data: { phone_or_email: string; password: string }) => {
+      const res = await axios.post(`${API_BASE_URL}/api/auth/login`, data);
+      return res.data;
+    },
+  });
+
+  const signup = async (data: { phone: string; first_name: string; last_name: string; email: string; password: string }): Promise<AuthResponse> => {
     setLoading(true);
     try {
-      const res = await fetch('###', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setUser(data.user);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        localStorage.setItem('token', data.token);
-        return { success: true };
-      } else {
-        return { success: false, message: data.message || 'Login failed' };
-      }
-    } catch (err) {
-      return { success: false, message: 'Something went wrong' };
+      const result = await signupMutation.mutateAsync(data);
+      setUser(result.user);
+      localStorage.setItem('user', JSON.stringify(result.user));
+      localStorage.setItem('token', result.token);
+      return { success: true, user: result.user, token: result.token };
+    } catch (err: any) {
+      return { success: false, message: err.response?.data?.message || err.message };
     } finally {
       setLoading(false);
     }
   };
 
-  const signup = async (email: string, password: string, firstname: string, lastname: string): Promise<AuthResponse> => {
+  const login = async (data: { phone_or_email: string; password: string }): Promise<AuthResponse> => {
     setLoading(true);
     try {
-      const res = await fetch('###', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firstname, lastname, email, password })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setUser(data.user);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        localStorage.setItem('token', data.token);
-        return { success: true };
-      } else {
-        return { success: false, message: data.message || 'Signup failed' };
-      }
-    } catch (err) {
-      return { success: false, message: 'Something went wrong' };
+      const result = await loginMutation.mutateAsync(data);
+      setUser(result.user);
+      localStorage.setItem('user', JSON.stringify(result.user));
+      localStorage.setItem('token', result.token);
+      return { success: true, user: result.user, token: result.token };
+    } catch (err: any) {
+      return { success: false, message: err.response?.data?.message || err.message };
     } finally {
       setLoading(false);
     }
@@ -101,61 +105,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('token');
   };
 
-  const resetPassword = async (email: string): Promise<AuthResponse> => {
-    setLoading(true);
-    try {
-      const res = await fetch('###', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        return { success: true, message: data.message || 'Email sent' };
-      } else {
-        return { success: false, message: data.message || 'Reset failed' };
-      }
-    } catch (err) {
-      return { success: false, message: 'Something went wrong' };
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const verifyEmail = async (code: string): Promise<AuthResponse> => {
-    setLoading(true);
-    try {
-      const res = await fetch('###', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        // Update user verification status if needed
-        if (data.user) {
-          setUser(data.user);
-          localStorage.setItem('user', JSON.stringify(data.user));
-        }
-        return { success: true, message: data.message || 'Email verified successfully' };
-      } else {
-        return { success: false, message: data.message || 'Incorrect verification code' };
-      }
-    } catch (err) {
-      return { success: false, message: 'Something went wrong' };
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const value = {
     user,
     login,
     signup,
     logout,
-    resetPassword,
-    verifyEmail,
-    loading
+    loading,
   };
 
   return (
