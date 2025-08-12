@@ -17,22 +17,22 @@ interface NavLink {
 const navLinks: NavLink[] = [
   {
     label: "Home",
-    icon: <HomeIcon fontSize="small" />,
+    icon: <div className="i-solar:home-angle-2-bold-duotone size-5"></div>,
     to: "/home",
   },
   {
     label: "Activity",
-    icon: <AccountCircleIcon fontSize="small" />,
+    icon: <div className="i-solar:point-on-map-perspective-bold-duotone size-5"></div>,
     to: "/activity",
   },
   {
     label: "Payment",
-    icon: <PaymentIcon fontSize="small" />,
+    icon: <div className="i-solar:card-bold-duotone size-5"></div>,
     to: "/payment",
   },
   {
     label: "Transactions",
-    icon: <ReceiptLongIcon fontSize="small" />,
+    icon: <div className="i-solar:card-transfer-bold-duotone size-5"></div>,
     to: "/transactions",
   },
 ];

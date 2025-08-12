@@ -11,6 +11,7 @@ import Profile from "./pages/profile.tsx";
 import Payment from "./pages/payment.tsx";
 import Home from "./pages/home.tsx";
 import Transactions from "./pages/transactions.tsx";
+import 'virtual:uno.css'
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
