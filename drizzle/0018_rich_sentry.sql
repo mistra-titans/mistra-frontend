@@ -1,0 +1,1 @@
+ALTER TABLE "accounts" ADD COLUMN "name" varchar(300) NOT NULL;

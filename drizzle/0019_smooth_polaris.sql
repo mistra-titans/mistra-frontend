@@ -1,0 +1,1 @@
+ALTER TABLE "ledger" ADD COLUMN "played" boolean DEFAULT false NOT NULL;
