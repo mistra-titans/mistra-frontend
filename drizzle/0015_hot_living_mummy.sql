@@ -1,0 +1,4 @@
+ALTER TABLE "ledger" ADD COLUMN "recipient_account" varchar(20);--> statement-breakpoint
+ALTER TABLE "ledger" ADD COLUMN "sender_account" varchar(20);--> statement-breakpoint
+ALTER TABLE "ledger" ADD CONSTRAINT "ledger_recipient_account_accounts_account_number_fk" FOREIGN KEY ("recipient_account") REFERENCES "public"."accounts"("account_number") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "ledger" ADD CONSTRAINT "ledger_sender_account_accounts_account_number_fk" FOREIGN KEY ("sender_account") REFERENCES "public"."accounts"("account_number") ON DELETE no action ON UPDATE no action;
