@@ -10,6 +10,7 @@
         "drizzle-orm": "^0.44.4",
         "elysia": "latest",
         "pg": "^8.16.3",
+        "rabbitmq-client": "^5.0.5",
       },
       "devDependencies": {
         "@types/pg": "^8.15.5",
@@ -173,6 +174,8 @@
     "postgres-date": ["postgres-date@1.0.7", "", {}, "sha512-suDmjLVQg78nMK2UZ454hAG+OAW+HQPZ6n++TNDUX+L0+uUlLywnoxJKDou51Zm+zTCjrCl0Nq6J9C5hP9vK/Q=="],
 
     "postgres-interval": ["postgres-interval@1.2.0", "", { "dependencies": { "xtend": "^4.0.0" } }, "sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ=="],
+
+    "rabbitmq-client": ["rabbitmq-client@5.0.5", "", {}, "sha512-qa6j6YpkXsKrD2s+j4sWN8cFsXJsCz4Nyvw/r/JZEpComhYbQAoLp2w4Hamv59g0MhoJUtGfz0eJ8TH6G0s9bQ=="],
 
     "resolve-pkg-maps": ["resolve-pkg-maps@1.0.0", "", {}, "sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw=="],
 
