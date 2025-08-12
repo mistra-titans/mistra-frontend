@@ -35,6 +35,13 @@ const ResponseUtils = {
     error: message,
   }),
 
+  NOT_FOUND: (message: string): ResponseError => ({
+    success: false,
+    data: null,
+    message: "Not Found",
+    error: message,
+  }),
+
   SUCCESS: (data: any, message: string = "Request was successful"): ResponseError => ({
     success: true,
     data,
@@ -49,4 +56,5 @@ export const {
   UNAUTHORIZED,
   FORBIDDEN,
   SUCCESS,
+  NOT_FOUND,
 } = ResponseUtils;
