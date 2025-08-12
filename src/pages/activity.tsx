@@ -1,4 +1,4 @@
-import React from 'react'
+
 import AdminLayout from '../components/layout'
 
 const activity = () => {
@@ -6,7 +6,7 @@ const activity = () => {
     <>
     <AdminLayout title={'activity'}>
     <div>
-      hello
+    Activity page
     </div>
     </AdminLayout>
     </>
