@@ -25,7 +25,8 @@ export const AuthMiddleware = new Elysia()
           }
         } catch (error) {
           set.status = 401
-          return UNAUTHORIZED("Unauthorized access, please login again.")
+          // The Throw is important to cancle the request. if I return the request continues
+          throw UNAUTHORIZED("Unauthorized access, please login again.")
         }
       }
     }
