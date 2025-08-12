@@ -1,5 +1,5 @@
 import Elysia, { t } from "elysia";
-import { INTERNAL_SERVER_ERROR, SUCCESS } from "../utils/response";
+import { INTERNAL_SERVER_ERROR, SUCCESS, UNAUTHORIZED } from "../utils/response";
 import { db } from "../utils/db";
 import { users } from "../db/user";
 import { eq, or } from "drizzle-orm";
@@ -50,10 +50,13 @@ export const AUTH_ROUTER = new Elysia({
     }
   })
   .use(JWT)
-  .post("/login", async ({ body, cookie: { auth }, jwt }) => {
+  .post("/login", async ({ body, cookie: { auth }, jwt, set }) => {
     try {
       const { phone_or_email, password } = body;
-
+      if (!phone_or_email || !password) {
+        set.status = 500
+        return UNAUTHORIZED("Phone or email and password are required");
+      }
       const user = await db.select().from(users).where(
         or(
           eq(users.phone, phone_or_email),
@@ -62,12 +65,14 @@ export const AUTH_ROUTER = new Elysia({
       ).limit(1);
 
       if (user.length === 0) {
-        return INTERNAL_SERVER_ERROR("User not found");
+        set.status = 401
+        return UNAUTHORIZED("User not found");
       }
 
       const isPasswordValid = await Bun.password.verify(password, user[0].password);
       if (!isPasswordValid) {
-        return INTERNAL_SERVER_ERROR("Invalid password");
+        set.status = 401
+        return UNAUTHORIZED("Invalid password");
       }
 
       const token = await jwt.sign({
@@ -84,6 +89,7 @@ export const AUTH_ROUTER = new Elysia({
 
       return SUCCESS({ token }, "Login successful");
     } catch (error) {
+      set.status = 500
       console.error("Error during login:", error);
       return INTERNAL_SERVER_ERROR("Login failed");
     }
@@ -97,11 +103,12 @@ export const AUTH_ROUTER = new Elysia({
     }
   })
 
-  .post("/logout", async ({ cookie: { auth } }) => {
+  .post("/logout", async ({ cookie: { auth }, set }) => {
     try {
       auth.remove();
       return SUCCESS(null, "Logout successful");
     } catch (error) {
+      set.status = 500
       console.error("Error during logout:", error);
       return INTERNAL_SERVER_ERROR("Logout failed");
     }
@@ -111,7 +118,7 @@ export const AUTH_ROUTER = new Elysia({
     }
   })
   .use(AuthMiddleware)
-  .post("/refresh", async ({ user, jwt, cookie: { auth } }) => {
+  .post("/refresh", async ({ user, jwt, cookie: { auth }, set }) => {
     try {
       const token = await jwt.sign({
         id: user.id,
@@ -127,6 +134,7 @@ export const AUTH_ROUTER = new Elysia({
 
       return SUCCESS({ token }, "Token refreshed successfully");
     } catch (error) {
+      set.status = 500
       console.error("Error during token refresh:", error);
       return INTERNAL_SERVER_ERROR("Token refresh failed");
     }
@@ -136,9 +144,13 @@ export const AUTH_ROUTER = new Elysia({
       summary: "Refresh user token",
     }
   })
-
-  .get("/profile", async ({ user }) => {
-    return SUCCESS({ ...user, password: undefined }, "User profile retrieved successfully");
+  .use(AuthMiddleware)
+  .get("/profile", async ({ user, set }) => {
+    if (user) {
+      return SUCCESS({ ...user, password: undefined }, "User profile retrieved successfully");
+    }
+    set.status = 401
+    return UNAUTHORIZED("Unauthorized")
   }, {
     userAuth: true,
     detail: {
@@ -146,20 +158,23 @@ export const AUTH_ROUTER = new Elysia({
     }
   })
 
-  .get("/verify", async ({ query, jwt }) => {
+  .get("/verify", async ({ query, jwt , set}) => {
     try {
       const { token } = query;
       if (!token) {
-        return INTERNAL_SERVER_ERROR("Token is required");
+        set.status = 401
+        return UNAUTHORIZED("Token is required");
       }
 
       const decoded = await jwt.verify(token);
       if (!decoded) {
-        return INTERNAL_SERVER_ERROR("Invalid token");
+        set.status = 401
+        return UNAUTHORIZED("Invalid token");
       }
 
       return SUCCESS(decoded, "Token is valid");
     } catch (error) {
+      set.status = 500
       console.error("Error during token verification:", error);
       return INTERNAL_SERVER_ERROR("Token verification failed");
     }
