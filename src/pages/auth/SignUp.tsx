@@ -29,30 +29,32 @@ const SignUp: React.FC = () => {
     e.preventDefault();
     setError('');
 
-    // Fixed the condition - was missing ! before lastname
-    if (!formData.firstname || !formData.lastname || !formData.email || !formData.password || !formData.confirmPassword) {
-      setError('Please fill in all fields');
-      return;
-    }
+  //   // Fixed the condition - was missing ! before lastname
+  //   if (!formData.firstname || !formData.lastname || !formData.email || !formData.password || !formData.confirmPassword) {
+  //     setError('Please fill in all fields');
+  //     return;
+  //   }
 
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
+  //   if (formData.password !== formData.confirmPassword) {
+  //     setError('Passwords do not match');
+  //     return;
+  //   }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
+  //   if (formData.password.length < 6) {
+  //     setError('Password must be at least 6 characters');
+  //     return;
+  //   }
 
-    // Combine first and last name for the signup function
-   const result = await signup( formData.email, formData.password, formData.firstname, formData.lastname);
-   if (result.success){
-    navigate('/signIn');
-   }
-   else{
-    setError(result.message || 'Failed to create account. Please try again')
-   }
+  //   // Combine first and last name for the signup function
+  //  const result = await signup( formData.email, formData.password, formData.firstname, formData.lastname);
+  //  if (result.success){
+  //   navigate('/emailVerification');
+  //  }
+  //  else{
+  //   setError(result.message || 'Failed to create account. Please try again')
+  //  }
+
+  navigate('/emailVerification');
   };
 
   return (

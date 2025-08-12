@@ -18,6 +18,7 @@ interface AuthContextType {
   signup: (email: string, password: string, firstname: string, lastname: string) => Promise<AuthResponse>;
   logout: () => void;
   resetPassword: (email: string) => Promise<AuthResponse>;
+  verifyEmail: (code: string) => Promise<AuthResponse>;
   loading: boolean;
 }
 
@@ -121,12 +122,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const verifyEmail = async (code: string): Promise<AuthResponse> => {
+    setLoading(true);
+    try {
+      const res = await fetch('###', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        // Update user verification status if needed
+        if (data.user) {
+          setUser(data.user);
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
+        return { success: true, message: data.message || 'Email verified successfully' };
+      } else {
+        return { success: false, message: data.message || 'Incorrect verification code' };
+      }
+    } catch (err) {
+      return { success: false, message: 'Something went wrong' };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const value = {
     user,
     login,
     signup,
     logout,
     resetPassword,
+    verifyEmail,
     loading
   };
 
