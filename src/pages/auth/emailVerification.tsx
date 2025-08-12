@@ -188,7 +188,7 @@ const EmailVerification: React.FC = () => {
           <div className="mt-6 text-center">
             <button
               onClick={() => navigate('/signup')}
-              className="inline-flex items-center text-gray-600 hover:text-gray-800 font-medium transition-colors"
+              className="inline-flex items-center  text-[#5C6BC0] hover:text-[#3F51B5] font-medium transition-colors"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Sign Up

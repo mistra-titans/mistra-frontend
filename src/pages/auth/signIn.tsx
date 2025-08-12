@@ -32,7 +32,7 @@ const SignIn: React.FC = () => {
     //   setError(result.message || 'Invalid Email or Password');
     // }
 
-    navigate('/dashboard');
+    navigate('/activity');
   };
 
   return (
