@@ -50,7 +50,7 @@ const SignUp: React.FC = () => {
       setShowToast(true);
       // Navigate to login page after successful registration
       setTimeout(() => {
-        navigate("/login");
+        navigate("/");
       }, 2000); // Wait 2 seconds to show success message
     },
     onError: (error: any) => {
