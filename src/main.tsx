@@ -3,7 +3,6 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-
 import SignUp from "./pages/auth/SignUp.tsx";
 // import ForgotPassword from "./pages/auth/forgotPassword.tsx";
 import Activity from "./pages/activity.tsx";

@@ -47,7 +47,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ title, children }) => {
       </div>
       {/* Main Content */}
       <main
-        className="min-h-screen"
+        className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50"
         style={{
           marginLeft: window.innerWidth >= 1024 ? SIDEBAR_WIDTH : 0,
           paddingTop: TOPBAR_HEIGHT,
