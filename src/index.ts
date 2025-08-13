@@ -6,7 +6,7 @@ import { logger } from "@tqman/nice-logger";
 
 const app = new Elysia()
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:5174", "https://2284919719e4.ngrok-free.app", "https://757884c53833.ngrok-free.app", "https://e39ff82fbc69.ngrok-free.app"],
+  origin: ["http://localhost:5173", "http://localhost:5174", "https://2284919719e4.ngrok-free.app", "https://757884c53833.ngrok-free.app", "https://2a6e1d7b5fe8.ngrok-free.app"],
   credentials: true,
 }))
 app.use(logger({

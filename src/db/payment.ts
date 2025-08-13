@@ -1,4 +1,4 @@
-import { bigint, boolean, char, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { bigint, boolean, char, integer, numeric, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { users } from "./user";
 import { accounts } from "./account";
 import { CURRENCY } from "./currency";
@@ -20,7 +20,6 @@ export const PAYMENT_STATUS = pgEnum("payment_status", [
 export const payments = pgTable("payments", {
   id: uuid("id").primaryKey().defaultRandom(),
   user_id: uuid("user_id").notNull().references(() => users.id),
-  payer_account: char("payer_account", { length: 14 }).references(() => accounts.account_number),
   recipient_account: char("recipient_account", { length: 14 }).references(() => accounts.account_number),
   transaction_id: uuid("transaction_id").references(() => transactions.id),
   amount: bigint("amount", { mode: "number" }).notNull(),
@@ -29,8 +28,7 @@ export const payments = pgTable("payments", {
   link_token: char("link_token", { length: 43 }).unique(),
   vcard_data: text("vcard_data"),
   status: PAYMENT_STATUS("status").notNull().default("PENDING"),
-  expires_at: timestamp("expires_at"),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull(),
-  used: boolean("used").notNull().default(false),
+  num_used: integer("num_used").notNull().default(0),
 })
