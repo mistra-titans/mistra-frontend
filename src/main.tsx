@@ -3,7 +3,8 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./pages/contexts/authcontext.tsx";
+import { AuthProvider } from "./contexts/authcontext.tsx";
+import { PaymentProvider } from "./contexts/authpayment.tsx";
 import SignUp from "./pages/auth/SignUp.tsx";
 // import ForgotPassword from "./pages/auth/forgotPassword.tsx";
 import Activity from "./pages/activity.tsx";
@@ -21,6 +22,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+      <PaymentProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<App />} />
@@ -34,6 +36,8 @@ createRoot(document.getElementById("root")!).render(
             {/* <Route path="/email-verification" element={<EmailVerification/>}/> */}
           </Routes>
         </BrowserRouter>
+
+      </PaymentProvider>
       </AuthProvider>
     </QueryClientProvider>
   </StrictMode>

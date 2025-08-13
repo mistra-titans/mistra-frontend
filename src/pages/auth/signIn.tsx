@@ -3,7 +3,7 @@ import Button from "../../components/button";
 import Toast from "../../components/Toast";
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../contexts/authcontext";
+import { useAuth } from "../../contexts/authcontext";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 
 const SignIn: React.FC = () => {

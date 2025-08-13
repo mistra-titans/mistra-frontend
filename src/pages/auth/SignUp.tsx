@@ -3,7 +3,7 @@ import Button from "../../components/button";
 import Toast from "../../components/Toast";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/authcontext";
+import { useAuth } from "../../contexts/authcontext";
 
 const SignUp: React.FC = () => {
   const [formData, setFormData] = useState({
