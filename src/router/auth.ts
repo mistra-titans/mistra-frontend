@@ -31,7 +31,7 @@ export const AUTH_ROUTER = new Elysia({
         return INTERNAL_SERVER_ERROR("User registration failed");
       }
 
-      return SUCCESS({...registered[0], password: undefined}, "User registered successfully");
+      return SUCCESS({ ...registered[0], password: undefined }, "User registered successfully");
 
     } catch (error) {
       console.error("Error during registration:", error);
@@ -84,7 +84,9 @@ export const AUTH_ROUTER = new Elysia({
       auth.set({
         value: token,
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-        httpOnly: true,
+        sameSite: "none",
+        secure: true
+        // httpOnly: true,
       });
 
       return SUCCESS({ token }, "Login successful");
@@ -158,7 +160,7 @@ export const AUTH_ROUTER = new Elysia({
     }
   })
 
-  .get("/verify", async ({ query, jwt , set}) => {
+  .get("/verify", async ({ query, jwt, set }) => {
     try {
       const { token } = query;
       if (!token) {
@@ -185,4 +187,13 @@ export const AUTH_ROUTER = new Elysia({
     detail: {
       summary: "Verify user token",
     }
-  });
+  })
+  .post("/logout", async ({ cookie: { auth }, set }) => {
+    try {
+      auth.remove()
+      return SUCCESS(null, "Logged out successfully")
+    } catch (error) {
+      set.status = 500
+      return INTERNAL_SERVER_ERROR("Failed to log out")
+    }
+  })

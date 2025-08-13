@@ -27,7 +27,7 @@ export const ACCOUNT_ROUTER = new Elysia({
         updated_at: new Date()
       }).returning()
 
-      return SUCCESS(new_account[0], "Account created successfuly")
+      return SUCCESS(new_account[0], "Account created successfully")
     } catch (error) {
       set.status = 500
       console.error("Error creating account:", error);
@@ -43,19 +43,28 @@ export const ACCOUNT_ROUTER = new Elysia({
   })
   .use(AuthMiddleware)
   .get("/", async ({ user }) => {
-    return SUCCESS(await db.select().from(accounts).where(eq(accounts.user_id, user.id)))
+    const accs = await db.select({ account_number: accounts.account_number }).from(accounts).where(eq(accounts.user_id, user.id))
+    const result = await Promise.all(
+      accs.map(async (acc) => {
+        const res = await replay(acc.account_number)
+        return res
+      })
+    )
+    console.log(result)
+    return SUCCESS(result)
   }, { userAuth: true, detail: { summary: "Get All Accounts" } })
   .get("/:account_number", async ({ user, params, set }) => {
     try {
-      const acc = await db.select().from(accounts).where(and(
+      const [acc] = await db.select().from(accounts).where(and(
         eq(accounts.user_id, user.id),
         eq(accounts.account_number, params.account_number)
       ))
-      if (acc.length === 0) {
+      if (!acc) {
         set.status = 404
         return NOT_FOUND("Account does not exist")
       }
-      return SUCCESS(acc[0])
+      const result = await replay(acc.account_number)
+      return SUCCESS(result)
     } catch (error) {
       set.status = 500
       return INTERNAL_SERVER_ERROR("Failed to fetch account details")

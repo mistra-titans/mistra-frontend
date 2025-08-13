@@ -8,9 +8,9 @@ export const replay = async (accnt_number: string): Promise<any> => {
   const total_amount = await db.transaction(async (tx) => {
     const logs = await db.select({ delta: ledger.delta, id: ledger.id }).from(ledger)
       .where(and(
-          eq(ledger.account, accnt_number),
-          eq(ledger.played, false)
-        ))
+        eq(ledger.account, accnt_number),
+        eq(ledger.played, false)
+      ))
     const total = logs.reduce((sum, { delta }) => sum + delta, 0);
     if (total == null || total == undefined) {
       throw new Error("Failed replaying")
@@ -27,11 +27,11 @@ export const replay = async (accnt_number: string): Promise<any> => {
       throw new Error("This account cannot be replayed")
     }
 
-    const result = (await tx.update(accounts).set({
+    const [result] = (await tx.update(accounts).set({
       balance: balance[0].balance + total
     })
-    .where(eq(accounts.account_number, accnt_number))
-    .returning())[0]
+      .where(eq(accounts.account_number, accnt_number))
+      .returning())
     return result
   })
   return total_amount;

@@ -13,6 +13,7 @@ export const TRANSACTION_TYPE = pgEnum('transaction_type', [
   'DEPOSIT',
   'WITHDRAWAL',
   'TRANSFER',
+  'PAYMENT',
   'REFUND',
   'SUBSCRIPTION',
 ]);
