@@ -157,11 +157,20 @@ export const TRANSACTION_ROUTER = new Elysia({
     detail: { summary: "Create Transaction" }
   })
   .post("/auth/:tranaction_reference", async () => {
-    
+
   }, {
     query: t.Object({
       otp: t.Numeric({
         maxLength: 6
       })
     }), detail: { summary: "Authorize A Transaction" }
+  })
+  .use(AuthMiddleware)
+  .post("/verify/:otp", async ({ params }) => {
+
+  }, {
+    userAuth: true,
+    params: t.Object({
+      otp: t.String()
+    })
   })
