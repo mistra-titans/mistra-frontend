@@ -30,6 +30,7 @@ export const transactions = pgTable('transactions', {
   original_payload: jsonb('original_payload'),
   max_retries: integer('max_retries').default(5),
   attempt_count: integer('attempt_count').default(0),
+  paystack_reference: text("paystack_reference"),
   next_retry_at: timestamp('next_retry_at'),
   last_error: text('last_error'),
   status: TRANSACTION_STATUS('status').notNull(),

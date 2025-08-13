@@ -9,6 +9,7 @@ import { CURRENCY_EMUM } from "@/utils/constant";
 import { ledger } from "@/db/ledger";
 import { and, eq } from "drizzle-orm";
 import { replay } from "@/utils/replay";
+import { chargeMobileMoney, pollTransaction, submitMoMoOtp } from "@/utils/paystack";
 
 
 export const ACCOUNT_ROUTER = new Elysia({
@@ -73,8 +74,9 @@ export const ACCOUNT_ROUTER = new Elysia({
 
   .post("/credit/:account_number", async ({ body, user, params, set }) => {
     // SIMUTATE ADDING MONEY
+    const pesewas = body.amount * 100;
     try {
-      const accnt_number = await db.transaction(async (tx) => {
+      const result = await db.transaction(async (tx) => {
         const user_account = await tx.select().from(accounts).where(and(
           eq(accounts.account_number, params.account_number),
           eq(accounts.user_id, user.id)
@@ -85,9 +87,21 @@ export const ACCOUNT_ROUTER = new Elysia({
           throw new Error("Unauthorized")
         }
 
+        const charge = await chargeMobileMoney({
+          email: user.email,
+          amount: pesewas,
+          currency: "GHS",
+          mobile_money: {
+            phone: body.phone,
+            provider: body.provider,
+          },
+        });
+
+        const reference = charge.data.reference;
 
         const transaction = await tx.insert(transactions).values({
-          amount_base: body.amount,
+          paystack_reference: reference,
+          amount_base: pesewas,
           currency: body.currency,
           status: "PENDING",
           type: "DEPOSIT",
@@ -101,19 +115,29 @@ export const ACCOUNT_ROUTER = new Elysia({
           throw INTERNAL_SERVER_ERROR("Failed creating transaction")
         }
 
+
+
+        // TODO: Do thorough verification B4 proceeding 
+
         await tx.insert(ledger).values({
           currency: body.currency,
-          delta: body.amount,
+          delta: pesewas,
           updated_at: new Date(),
           transaction_id: transaction[0].id,
           user_id: user.id,
           account: params.account_number
         })
 
-        return user_account[0].account_number
+        return charge
       })
+      const { status, display_text, reference } = result.data;
+      if (status === "send_otp") {
+        return SUCCESS({ reference, action: "otp", message: display_text });
+      }
 
-      return SUCCESS(await replay(accnt_number), "Here's your account balance")
+      if (status === "pay_offline") {
+        return SUCCESS({ reference, action: "ussd", message: display_text });
+      }
     } catch (error) {
       set.status = 500
       console.error("Error creating transaction:", error);
@@ -126,8 +150,13 @@ export const ACCOUNT_ROUTER = new Elysia({
     }),
     body: t.Object({
       amount: t.Number(),
-      phone: t.Optional(t.String()),
-      currency: CURRENCY_EMUM
+      phone: (t.String()),
+      currency: CURRENCY_EMUM,
+      provider: t.Enum({
+        mtn: "mtn",
+        vodafone: "vodafone",
+        airteltigo: "airteltigo"
+      })
     }),
     detail: { summary: "Credit Account" }
   })
@@ -149,4 +178,43 @@ export const ACCOUNT_ROUTER = new Elysia({
       account_number: t.String()
     }),
     detail: { summary: "Get Account Balance" }
+  })
+  .post("/credit/verify", async ({ body, set }) => {
+    try {
+      const res = await db.transaction(async (tx) => {
+        try {
+          if (body.otp) {
+            await submitMoMoOtp(body.reference, body.otp)
+          }
+        } catch (error) {
+          console.log(error)
+        }
+
+        const result = await pollTransaction(body.reference);
+
+        if (!result) {
+          throw new Error("Verification Failed")
+        }
+
+        await tx.update(transactions).set({
+          status: "COMPLETED"
+        }).where(eq(transactions.paystack_reference, body.reference))
+
+        return result
+      })
+      return SUCCESS({}, "Credit Successfull")
+    } catch (error) {
+      set.status = 500
+      await db.update(transactions).set({
+        status: "FAILED"
+      }).where(eq(transactions.paystack_reference, body.reference))
+      console.log(error)
+      return INTERNAL_SERVER_ERROR("Error verifying your payment")
+    }
+  }, {
+    body: t.Object({
+      otp: t.Optional(t.String()),
+      reference: t.String()
+    }),
+    detail: {summary: "Verify Credit"}
   })
