@@ -3,7 +3,7 @@ import Button from "../../components/button";
 import Toast from "../../components/Toast";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../../contexts/authcontext";
+import { useAuth } from "../../contexts/use-auth";
 
 const SignUp: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -19,7 +19,7 @@ const SignUp: React.FC = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showToast, setShowToast] = useState(false);
-  const { signup, loading } = useAuth();
+  const { signup } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -29,31 +29,36 @@ const SignUp: React.FC = () => {
     });
   };
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
+  e.preventDefault();
+  setError("");
+  setSuccess("");
 
-    // Validation logic here...
+  // Validation logic here...
 
-    // Build payload for register endpoint
-    const payload = {
-      phone: formData.phone,
-      first_name: formData.firstname,
-      last_name: formData.lastname,
-      email: formData.email,
-      password: formData.password,
-    };
+  // Build payload for register endpoint
+  const payload = {
+    phone: formData.phone,
+    first_name: formData.firstname,
+    last_name: formData.lastname,
+    email: formData.email,
+    password: formData.password,
+  };
 
-    const result = await signup(payload);
-    if (result.success) {
+  signup.mutate(payload, {
+    onSuccess: () => {
       setSuccess("Registration successful!");
       setShowToast(true);
-      // navigate or other logic
-    } else {
-      setError(result.message || "Registration failed");
+      // Navigate to login page after successful registration
+      setTimeout(() => {
+        navigate("/login");
+      }, 2000); // Wait 2 seconds to show success message
+    },
+    onError: (error: any) => {
+      setError(error?.message || "Registration failed");
       setShowToast(true);
     }
-  };
+  });
+};
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
@@ -252,7 +257,7 @@ const SignUp: React.FC = () => {
                   <Button
                     type="submit"
                     name="Create Account"
-                    loading={loading}
+                    loading={signup.isPending}
                     width="100%"
                     height="48px"
                     className="mt-2"

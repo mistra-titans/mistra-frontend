@@ -16,7 +16,7 @@ const Card: React.FC<CardProps> = ({
   return (
     <div className={width}>
       <div
-        className={`bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6 lg:p-8 flex flex-col justify-center overflow-y-auto ${height} ${className}`}
+        className={`bg-white/80 backdrop-blur-sm rounded-2xl  border border-white/20 p-6 lg:p-8 flex flex-col justify-center overflow-y-auto ${height} ${className}`}
       >
         {children}
       </div>

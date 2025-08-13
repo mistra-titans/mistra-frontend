@@ -3,8 +3,7 @@ import Button from "../../components/button";
 import Toast from "../../components/Toast";
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../../contexts/authcontext";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { useAuth } from "../../contexts/use-auth";
 
 const SignIn: React.FC = () => {
   const [emailOrPhone, setEmailOrPhone] = useState("");
@@ -13,13 +12,12 @@ const SignIn: React.FC = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showToast, setShowToast] = useState(false);
-  const { login, loading } = useAuth();
+  const { login } = useAuth();
 
   const navigate = useNavigate();
   const location = useLocation();
 
   const from = location.state?.from?.pathname || "/SignIn";
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -31,21 +29,22 @@ const SignIn: React.FC = () => {
       return;
     }
 
-    // Build payload for login endpoint
     const payload = {
       phone_or_email: emailOrPhone,
       password,
     };
 
-    const result = await login(payload);
-    if (result.success) {
-      setSuccess("Login successful!");
-      setShowToast(true);
-      setTimeout(() => navigate("/home"), 1500);
-    } else {
-      setError(result.message || "Invalid Email or Password");
-      setShowToast(true);
-    }
+    login.mutate(payload, {
+      onSuccess: () => {
+        setSuccess("Login successful!");
+        setShowToast(true);
+        setTimeout(() => navigate("/home"), 1500);
+      },
+      onError: (error: any) => {
+        setError(error?.message || "Invalid Email or Password");
+        setShowToast(true);
+      },
+    });
   };
   return (
     <>
@@ -150,7 +149,7 @@ const SignIn: React.FC = () => {
                   <Button
                     type="submit"
                     name="Sign In"
-                    loading={loading}
+                    loading={login.isPending}
                     width="100%"
                     height="48px"
                     className="mt-2"

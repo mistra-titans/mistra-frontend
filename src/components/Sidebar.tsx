@@ -1,12 +1,7 @@
 import React from "react";
 import logo from "../assets/images/logo.png";
-import { Link, useLocation } from "react-router-dom";
-// import HomeIcon from "@mui/icons-material/Home";
-// import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-// import PaymentIcon from "@mui/icons-material/Payment";
-// import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
-// import SettingsIcon from "@mui/icons-material/Settings";
-// import LogoutIcon from "@mui/icons-material/Logout";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/use-auth"; // Adjust the import path as needed
 
 interface NavLink {
   label: string;
@@ -22,7 +17,9 @@ const navLinks: NavLink[] = [
   },
   {
     label: "Activity",
-    icon: <div className="i-solar:point-on-map-perspective-bold-duotone size-5"></div>,
+    icon: (
+      <div className="i-solar:point-on-map-perspective-bold-duotone size-5"></div>
+    ),
     to: "/activity",
   },
   {
@@ -43,8 +40,19 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ closeSidebar }) => {
   const location = useLocation();
+  const { logout } = useAuth()
   const isActive = (to?: string) =>
     !!to && location.pathname.startsWith(to) && to !== "#";
+  const navigate = useNavigate();
+  const handleLogout = async () => {
+    try {
+      logout.mutate();
+      // Optionally redirect to login page or home
+      navigate("/"); // If using useNavigate
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
   return (
     <aside className="bg-white h-screen w-64 flex flex-col border-r border-gray-100 shadow-sm">
@@ -92,15 +100,19 @@ const Sidebar: React.FC<SidebarProps> = ({ closeSidebar }) => {
       <div className="px-4 py-6 mt-auto flex flex-col gap-2 border-t border-gray-100">
         <button className="flex items-center gap-3 px-4 py-2 rounded-lg text-base font-medium text-gray-500 hover:bg-[#8093EB]/10 text-left w-full">
           <span className="text-lg flex items-center">
-             <div className="i-solar:settings-bold-duotone size-5"></div>
+            <div className="i-solar:settings-bold-duotone size-5"></div>
           </span>
           Settings
         </button>
-        <button className="flex items-center gap-3 px-4 py-2 rounded-lg text-base font-medium text-gray-500 hover:bg-[#8093EB]/10 text-left w-full">
+        <button
+          onClick={handleLogout}
+          disabled={logout.isPending}
+          className="flex items-center gap-3 px-4 py-2 rounded-lg text-base font-medium text-gray-500 hover:bg-[#8093EB]/10 text-left w-full disabled:opacity-50 disabled:cursor-not-allowed"
+        >
           <span className="text-lg flex items-center">
-              <div className="i-solar:logout-2-bold-duotone size-5"></div>
+            <div className="i-solar:logout-2-bold-duotone size-5"></div>
           </span>
-          Logout
+          {logout.isPending ? "Logging out..." : "Logout"}
         </button>
       </div>
     </aside>
