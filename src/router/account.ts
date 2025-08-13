@@ -4,7 +4,7 @@ import { INTERNAL_SERVER_ERROR, NOT_FOUND, SUCCESS } from "../utils/response";
 import { db } from "../utils/db";
 import { accounts } from "../db/account";
 import { generateRandoms } from "../utils/util";
-import { transactions } from "../db/transacction";
+import { transactions } from "../db/transaction";
 import { CURRENCY_EMUM } from "@/utils/constant";
 import { ledger } from "@/db/ledger";
 import { and, eq } from "drizzle-orm";

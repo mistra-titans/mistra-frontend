@@ -1,6 +1,6 @@
 import { bigint, boolean, char, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { CURRENCY } from "./currency";
-import { transactions } from "./transacction";
+import { transactions } from "./transaction";
 import { accounts } from "./account";
 
 export const ledger = pgTable('ledger', {

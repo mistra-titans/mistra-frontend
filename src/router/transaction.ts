@@ -3,7 +3,7 @@ import { AuthMiddleware } from "../utils/auth";
 import { CURRENCY_EMUM, QUERY_CONFIG, TRANSACTION_TYPE_ENUM } from "../utils/constant";
 import { INTERNAL_SERVER_ERROR, SUCCESS } from "../utils/response";
 import { and, asc, desc, eq, lte } from "drizzle-orm";
-import { transactions } from "../db/transacction";
+import { transactions } from "../db/transaction";
 import { db } from "../utils/db";
 import { accounts } from "../db/account";
 import { ledger } from "../db/ledger";
@@ -129,7 +129,7 @@ export const TRANSACTION_ROUTER = new Elysia({
               updated_at: new Date(),
             })
 
-            return  sender_account
+            return sender_account
           })
           return await replay(_sender_account)
         case "SUBSCRIPTION":
@@ -154,5 +154,5 @@ export const TRANSACTION_ROUTER = new Elysia({
       currency: CURRENCY_EMUM,
       type: TRANSACTION_TYPE_ENUM,
     }),
-    detail: {summary: "Create Transaction"}
+    detail: { summary: "Create Transaction" }
   })
