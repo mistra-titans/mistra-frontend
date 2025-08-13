@@ -1,4 +1,4 @@
-import { FailedTransaction } from "@/db/failedTransactions";
+import { FailedTransaction } from "../db/transaction";
 import { RetryService } from "./services.retry";
 
 export class RetryScheduler {
@@ -73,24 +73,24 @@ export class RetryScheduler {
   }
 
   private async processRetry(retry: FailedTransaction): Promise<void> {
-    const worker = this.workers.get(retry.workerType)
+    const worker = this.workers.get(retry.worker_type!)
 
     if (!worker) {
-      console.error(`No worker registered for type: ${retry.workerType}`)
+      console.error(`No worker registered for type: ${retry.worker_type}`)
       return
     }
 
     try {
-      console.log(`Retrying transaction ${retry.transactionId}, attempt ${retry.attemptCount + 1}/${retry.maxRetries}`)
+      console.log(`Retrying transaction ${retry.id}, attempt ${retry.attempt_count! + 1}/${retry.max_retries}`)
 
-      await worker(retry.originalPayload)
+      await worker(retry.original_payload)
       await this.retryService.updateRetryAttempt(retry.id, true)
     } catch (error) {
-      console.error(`Retry failed for transaction ${retry.transactionId}: `, error)
-      const isRetryable = this.retryService.isRetryableError(retry.workerType, error as Error);
+      console.error(`Retry failed for transaction ${retry.id}: `, error)
+      const isRetryable = this.retryService.isRetryableError(retry.worker_type!, error as Error);
 
       if (!isRetryable) {
-        console.log(`Non-retryable error for ${retry.transactionId}, sending to dead letter`);
+        console.log(`Non-retryable error for ${retry.id}, sending to dead letter`);
       }
       await this.retryService.updateRetryAttempt(retry.id, false, error as Error);
 

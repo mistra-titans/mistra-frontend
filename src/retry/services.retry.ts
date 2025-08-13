@@ -1,7 +1,11 @@
 import { EnhancedMessage, RETRY_CONFIGS, type RetryConfig } from "@/config/retry.config";
 import type { Database } from "../utils/db"
-import { FailedTransaction, failedTransactions, NewFailedTransaction } from "@/db/failedTransactions";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { FailedTransaction, transactions, NewFailedTransaction } from "../db/transaction";
+import { and, asc, desc, eq, lte } from "drizzle-orm";
+
+type _NewFailedTransaction = Omit<NewFailedTransaction,
+  'user_id' | 'updated_at' | 'amount_base' | 'currency' |
+  'recipient_account' | 'sender_account' | 'type' | 'created_at'>
 
 export class RetryService {
   constructor(private db: Database) { }
@@ -18,9 +22,9 @@ export class RetryService {
   //check if retryable
   isRetryableError(workerType: string, error: Error): boolean {
     const config = this.getRetryConfig(workerType)
-    return config.retryableErrors.some(retryableError => {
+    return config.retryableErrors.some(retryableError =>
       error.message.includes(retryableError) || error.name === retryableError
-    })
+    )
   }
 
   //calculate delay before retry
@@ -40,32 +44,33 @@ export class RetryService {
     const config = this.getRetryConfig(message.type)
     const delay = this.calculateBackoffDelay(1, config)
 
-
-    const newFailedTransaction: NewFailedTransaction = {
-      transactionId: message.metadata.transactionId,
-      workerType: message.metadata.workerType,
-      originalPayload: message.payload,
-      maxRetries: message.metadata.maxRetries,
-      attemptCount: 1,
-      nextRetryAt: new Date(Date.now() + delay),
+    const result = await this.db.update(transactions).set({
+      worker_type: message.metadata.workerType,
+      original_payload: message.payload,
+      max_retries: message.metadata.maxRetries,
+      attempt_count: 1,
+      next_retry_at: new Date(Date.now() + delay),
       status: 'PENDING',
-      lastError: error.message
-    }
+      updated_at: new Date(),
+      last_error: error.message,
+    }).where(eq(transactions.id, message.metadata.transactionId))
 
-    await this.db.insert(failedTransactions).values(newFailedTransaction)
-    console.log(`Recorded failure for transaction ${message.metadata.transactionId}`)
+    if (!result.rowCount || result.rowCount === 0) {
+      throw new Error(`Transaction ${message.metadata.transactionId} not found for retry update`);
+    }
+    console.log(`Updated transaction ${message.metadata.transactionId} as failed, retry in ${delay}ms`)
   }
 
 
   //get due retries
   async getDueRetries(limit: number = 100): Promise<FailedTransaction[]> {
-    return await this.db.select().from(failedTransactions).where(
+    return await this.db.select().from(transactions).where(
       and(
-        eq(failedTransactions.status, 'PENDING'),
-        eq(failedTransactions.nextRetryAt, new Date())
+        eq(transactions.status, 'PENDING'),
+        lte(transactions.next_retry_at, new Date())
       )
     )
-      .orderBy(asc(failedTransactions.nextRetryAt))
+      .orderBy(asc(transactions.next_retry_at))
       .limit(limit);
   }
 
@@ -76,10 +81,10 @@ export class RetryService {
     error?: Error
   ): Promise<void> {
     if (success) {
-      await this.db.update(failedTransactions).set({
+      await this.db.update(transactions).set({
         status: 'COMPLETED',
-        updatedAt: new Date()
-      }).where(eq(failedTransactions.id, retryId))
+        updated_at: new Date()
+      }).where(eq(transactions.id, retryId))
 
       console.log(`Transaction retry ${retryId} completed successfully`)
       return
@@ -87,53 +92,53 @@ export class RetryService {
 
     const [retry] = await this.db
       .select()
-      .from(failedTransactions)
-      .where(eq(failedTransactions.id, retryId))
+      .from(transactions)
+      .where(eq(transactions.id, retryId))
       .limit(1);
 
     if (!retry) {
-      console.warn(`Retry record ${retryId} not foung`)
+      console.warn(`Retry record ${retryId} not found`)
       return
     }
 
-    if (retry.attemptCount >= retry.maxRetries) {
+    if (retry.attempt_count! >= retry.max_retries!) {
       //send to deadletter
       await this.db
-        .update(failedTransactions)
+        .update(transactions)
         .set({
           status: 'FAILED',
-          finalError: error?.message,
-          deadLetteredAt: new Date(),
-          updatedAt: new Date()
+          last_error: error?.message,
+          dead_lettered_at: new Date(),
+          updated_at: new Date()
         })
-        .where(eq(failedTransactions.id, retryId));
+        .where(eq(transactions.id, retryId));
 
-      console.log(`Transaction ${retry.transactionId} sent to dead letter after ${retry.attemptCount} attempts`)
+      console.log(`Transaction ${retry.id} sent to dead letter after ${retry.attempt_count} attempts`)
 
       //notify
     } else {
-      const config = this.getRetryConfig(retry.workerType)
-      const delay = this.calculateBackoffDelay(retry.attemptCount + 1, config)
+      const config = this.getRetryConfig(retry.worker_type!)
+      const delay = this.calculateBackoffDelay(retry.attempt_count! + 1, config)
 
       await this.db
-        .update(failedTransactions)
+        .update(transactions)
         .set({
-          attemptCount: retry.attemptCount + 1,
-          nextRetryAt: new Date(Date.now() + delay),
-          lastError: error?.message || '',
-          updatedAt: new Date()
+          attempt_count: retry.attempt_count! + 1,
+          next_retry_at: new Date(Date.now() + delay),
+          last_error: error?.message || '',
+          updated_at: new Date()
         })
-        .where(eq(failedTransactions.id, retryId));
+        .where(eq(transactions.id, retryId));
 
-      console.log(`Scheduled retry ${retry.attemptCount + 1}/${retry.maxRetries} for transaction ${retry.transactionId} in ${delay}ms`);
+      console.log(`Scheduled retry ${retry.attempt_count! + 1}/${retry.max_retries} for transaction ${retry.id} in ${delay}ms`);
     }
   }
 
   //get dead letter transactions
   async getDeadLetters(limit: number = 50): Promise<FailedTransaction[]> {
-    return await this.db.select().from(failedTransactions).where(
-      eq(failedTransactions.status, 'FAILED')
-    ).orderBy(desc(failedTransactions.deadLetteredAt)).limit(limit)
+    return await this.db.select().from(transactions).where(
+      eq(transactions.status, 'FAILED')
+    ).orderBy(desc(transactions.dead_lettered_at)).limit(limit)
   }
 
   //notify
