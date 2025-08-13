@@ -1,0 +1,1 @@
+ALTER TABLE "transactions" ADD COLUMN "paystack_reference" text;
