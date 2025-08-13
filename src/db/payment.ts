@@ -1,8 +1,8 @@
 import { bigint, boolean, char, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { users } from "./user";
 import { accounts } from "./account";
-import { transactions } from "./transacction";
 import { CURRENCY } from "./currency";
+import { transactions } from "./transaction";
 
 export const PAYMENT_METHOD = pgEnum("payment_method", [
   "LINK",
