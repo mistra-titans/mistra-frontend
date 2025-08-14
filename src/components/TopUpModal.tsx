@@ -188,7 +188,7 @@ const TopUpModal: React.FC<TopUpModalProps> = ({
                   <option value="">Select account to credit</option>
                   {accounts.data?.data?.map((account: any) => (
                     <option key={account.id} value={account.account_number}>
-                      {account.account_number}
+                      {account.name}
                     </option>
                   ))}
                 </select>
