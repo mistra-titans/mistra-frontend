@@ -10,6 +10,7 @@ import { useSwipeable } from "react-swipeable";
 import { useAccount } from "../contexts/use-account";
 import Toast from "../components/Toast";
 
+
 const HomePage: React.FC = () => {
   const [currentCardIndex, setCurrentCardIndex] = React.useState(0);
   const [isAddWalletModalOpen, setIsAddWalletModalOpen] = React.useState(false);
@@ -189,6 +190,7 @@ const HomePage: React.FC = () => {
                     <div className="i-solar:bill-list-bold-duotone size-5" />
                   }
                   height="44px"
+                  
                 />
                 <Button
                   name="Top Up"

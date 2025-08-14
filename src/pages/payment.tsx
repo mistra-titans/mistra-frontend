@@ -177,7 +177,7 @@ const Payment = () => {
         }
       };
 
-      const onScanFailure = (error: string) => {
+      const onScanFailure = () => {
         // Handle scan failure - this is called frequently, so we don't log it
         // console.warn(`QR Code scan error: ${error}`);
       };
@@ -260,7 +260,7 @@ const Payment = () => {
 
     try {
       // Call the redeem API
-      const result = await claimPayment.mutateAsync({ token: pendingToken, account_number: accountInputValue  });
+     await claimPayment.mutateAsync({ token: pendingToken, account_number: accountInputValue  });
       
       showSuccess('Payment claimed successfully!');
       setShowAccountInputModal(false);
