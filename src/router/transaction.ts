@@ -179,30 +179,43 @@ export const TRANSACTION_ROUTER = new Elysia({
     }),
     detail: { summary: "Create Transaction" }
   })
-  .post("/auth/:tranaction_reference", async () => {
-
-  }, {
-    query: t.Object({
-      otp: t.Numeric({
-        maxLength: 6
-      })
-    }), detail: { summary: "Authorize A Transaction" }
-  })
   .use(AuthMiddleware)
   .post("/verify/:otp", async ({ params, user, set }) => {
     try {
-      const [_otp] = await db.select().from(transaction_otp).where(eq(transaction_otp.code, params.otp)).limit(1)
-      const [txxn] = await db.select().from(transactions).where(and(
-        eq(transactions.id, _otp.transaction_id),
-        eq(users.id, user.id)
-      ))
+      return await db.transaction(async (tx) => {
+        const [_otp] = await tx.select().from(transaction_otp).where(eq(transaction_otp.code, params.otp)).limit(1)
+        let [txxn] = await tx.select().from(transactions).where(and(
+          eq(transactions.id, _otp.transaction_id),
+          eq(users.id, user.id)
+        ))
 
-      if (!txxn) {
-        throw new Error("Transaction Verification failed")
-      }
-      // TODO:
-      // Enqueue Transaction if transaction is verified 
-      return SUCCESS("")
+        if (!txxn) {
+          throw new Error("Transaction Verification failed")
+        }
+        // TODO:
+        // Enqueue Transaction if transaction is verified 
+        await tx.insert(ledger).values({
+          currency: txxn.currency as "GHC",
+          delta: -txxn.amount_base,
+          user_id: user.id,
+          transaction_id: txxn.id,
+          account: txxn.sender_account,
+          updated_at: new Date(),
+        })
+        // Recipient
+        await tx.insert(ledger).values({
+          currency: txxn.currency as "GHC",
+          delta: txxn.amount_base,
+          user_id: user.id,
+          transaction_id: txxn.id,
+          account: txxn.recipient_account,
+          updated_at: new Date(),
+        })
+        let [trans] = await tx.update(transactions)
+          .set({ status: "COMPLETED" })
+          .where(eq(transactions.id, txxn.id)).returning()
+        return SUCCESS(trans)
+      })
     } catch (error) {
       set.status = 500
       console.log(error)
