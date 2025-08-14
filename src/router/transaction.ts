@@ -194,7 +194,7 @@ export const TRANSACTION_ROUTER = new Elysia({
         const [_otp] = await tx.select().from(transaction_otp).where(eq(transaction_otp.code, params.otp)).limit(1)
         let [txxn] = await tx.select().from(transactions).where(and(
           eq(transactions.id, _otp.transaction_id),
-          eq(users.id, user.id)
+          eq(transactions.user_id, user.id)
         ))
 
         if (!txxn) {
