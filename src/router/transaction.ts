@@ -8,6 +8,10 @@ import { db } from "../utils/db";
 import { accounts } from "../db/account";
 import { ledger } from "../db/ledger";
 import { replay } from "@/utils/replay";
+import { transaction_otp } from "@/db/otp";
+import { users } from "@/db/user";
+import { sendOTPEmail } from "@/utils/mailer";
+import { createOTPpaylaod } from "@/utils/otp";
 
 
 export const TRANSACTION_ROUTER = new Elysia({
@@ -108,8 +112,27 @@ export const TRANSACTION_ROUTER = new Elysia({
             if (transacction.length === 0) {
               throw INTERNAL_SERVER_ERROR("Failed to record transaction");
             }
+            const [otp] = await tx.insert(transaction_otp).values(await createOTPpaylaod(transacction[0].id)).returning()
+            
+            // TODO: This should be done on the queue
+            try {
+              const result = await sendOTPEmail({
+                otpCode: otp.code,
+                userEmail: user.email,
+                senderName: 'Mistra',
+                subject: 'Your Login Verification Code'
+              });
 
-            // double log into ledger
+              if (result.success) {
+                console.log('OTP email sent successfully!', result.messageId);
+              } else {
+                console.error('Failed to send OTP email:', result.error);
+              }
+            } catch (error) {
+              console.error('Unexpected error:', error);
+            }
+
+            // TODO: double log into ledger
             // Sender
             await tx.insert(ledger).values({
               currency: currency,
@@ -166,11 +189,29 @@ export const TRANSACTION_ROUTER = new Elysia({
     }), detail: { summary: "Authorize A Transaction" }
   })
   .use(AuthMiddleware)
-  .post("/verify/:otp", async ({ params }) => {
+  .post("/verify/:otp", async ({ params, user, set }) => {
+    try {
+      const [_otp] = await db.select().from(transaction_otp).where(eq(transaction_otp.code, params.otp)).limit(1)
+      const [txxn] = await db.select().from(transactions).where(and(
+        eq(transactions.id, _otp.transaction_id),
+        eq(users.id, user.id)
+      ))
 
+      if (!txxn) {
+        throw new Error("Transaction Verification failed")
+      }
+      // TODO:
+      // Enqueue Transaction if transaction is verified 
+      return SUCCESS("")
+    } catch (error) {
+      set.status = 500
+      console.log(error)
+      return INTERNAL_SERVER_ERROR("Failed to verify transaction")
+    }
   }, {
     userAuth: true,
     params: t.Object({
       otp: t.String()
-    })
+    }),
+    detail: { summary: "Verify Transaction" }
   })
