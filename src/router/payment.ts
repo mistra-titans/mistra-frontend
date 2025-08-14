@@ -155,7 +155,7 @@ export const PAYMENT_ROUTER = new Elysia({
           otpCode: otp.code,
           userEmail: user.email,
           senderName: 'Mistra',
-          subject: 'Your Login Verification Code'
+          subject: 'Your Transaction Verification Code'
         });
 
 
