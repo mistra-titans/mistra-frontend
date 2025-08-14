@@ -94,88 +94,93 @@ export const PAYMENT_ROUTER = new Elysia({
     })
   })
   .get("/redeem/:token", async ({ params, set, user, query }) => {
-    const { token } = params;
-    const { id, amount, currency } = verifyPaymentLink(token) as {
-      id: string,
-      amount: number,
-      currency: "GHC" | "NGN" | "USD"
-    };
-
-    const [payment] = await db.select().from(payments).where(eq(payments.id, id));
-
-    if (payment.amount !== amount) {
-      set.status = 400;
-      return BAD_REQUEST("Payment amount mismatch");
-    }
-
-    const [updatedPayment] = await db
-      .update(payments)
-      .set({
-        num_used: payment.num_used + 1
-      })
-      .where(eq(payments.id, id))
-      .returning();
-
-    await db.transaction(async (tx) => {
-      const [trans] = await tx.insert(transactions).values({
-        amount_base: amount,
-        currency: currency,
-        status: "PENDING",
-        type: "PAYMENT",
-        user_id: user.id,
-        updated_at: new Date(),
-        sender_account: query.account_number,
-        recipient_account: payment.recipient_account
-      }).returning()
-
-      // double log into ledger
-      // Sender
-      // await tx.insert(ledger).values({
-      //   currency: currency,
-      //   delta: -amount,
-      //   user_id: user.id,
-      //   transaction_id: trans.id,
-      //   account: query.account_number,
-      //   updated_at: new Date(),
-      // })
-      // // Recipient
-      // await tx.insert(ledger).values({
-      //   currency: currency,
-      //   delta: amount,
-      //   user_id: user.id,
-      //   transaction_id: trans.id,
-      //   account: payment.recipient_account,
-      //   updated_at: new Date(),
-      // })
-      const [otp] = await tx.insert(transaction_otp).values(await createOTPpaylaod(trans.id)).returning()
-
-      try {
-        const result = await sendOTPEmail({
-          otpCode: otp.code,
-          userEmail: user.email,
-          senderName: 'Mistra',
-          subject: 'Your Transaction Verification Code'
-        });
-
-
-        // double log into ledger
-        if (result.success) {
-          console.log('OTP email sent successfully!', result.messageId);
-        } else {
-          console.error('Failed to send OTP email:', result.error);
-        }
-      } catch (error) {
-        console.error('Unexpected error:', error);
+    try {
+      const { token } = params;
+      const { id, amount, currency } = verifyPaymentLink(token) as {
+        id: string,
+        amount: number,
+        currency: "GHC" | "NGN" | "USD"
+      };
+  
+      const [payment] = await db.select().from(payments).where(eq(payments.id, id));
+  
+      if (payment.amount !== amount) {
+        set.status = 400;
+        return BAD_REQUEST("Payment amount mismatch");
       }
-    })
-
-    return SUCCESS({
-      payment_id: updatedPayment.id,
-      amount: updatedPayment.amount,
-      currency: updatedPayment.currency,
-      recipient_account: updatedPayment.recipient_account,
-      message: "Payment successfully processed"
-    });
+  
+      const [updatedPayment] = await db
+        .update(payments)
+        .set({
+          num_used: payment.num_used + 1
+        })
+        .where(eq(payments.id, id))
+        .returning();
+  
+      await db.transaction(async (tx) => {
+        const [trans] = await tx.insert(transactions).values({
+          user_id: user.id,
+          amount_base: amount,
+          currency: payment.currency,
+          recipient_account: String(payment.recipient_account),
+          sender_account: String(query.account_number),
+          type: "PAYMENT",
+          status: "PENDING",
+          updated_at: new Date(),
+        }).returning()
+  
+        // double log into ledger
+        // Sender
+        // await tx.insert(ledger).values({
+        //   currency: currency,
+        //   delta: -amount,
+        //   user_id: user.id,
+        //   transaction_id: trans.id,
+        //   account: query.account_number,
+        //   updated_at: new Date(),
+        // })
+        // // Recipient
+        // await tx.insert(ledger).values({
+        //   currency: currency,
+        //   delta: amount,
+        //   user_id: user.id,
+        //   transaction_id: trans.id,
+        //   account: payment.recipient_account,
+        //   updated_at: new Date(),
+        // })
+        const [otp] = await tx.insert(transaction_otp).values(await createOTPpaylaod(trans.id)).returning()
+  
+        try {
+          const result = await sendOTPEmail({
+            otpCode: otp.code,
+            userEmail: user.email,
+            senderName: 'Mistra',
+            subject: 'Your Transaction Verification Code'
+          });
+  
+  
+          // double log into ledger
+          if (result.success) {
+            console.log('OTP email sent successfully!', result.messageId);
+          } else {
+            console.error('Failed to send OTP email:', result.error);
+          }
+        } catch (error) {
+          console.error('Unexpected error:', error);
+        }
+      })
+  
+      return SUCCESS({
+        payment_id: updatedPayment.id,
+        amount: updatedPayment.amount,
+        currency: updatedPayment.currency,
+        recipient_account: updatedPayment.recipient_account,
+        message: "Payment successfully processed"
+      });
+    } catch (error) {
+      console.log(error)
+      return INTERNAL_SERVER_ERROR("Failed to make payment")
+    }
   }, {
     userAuth: true,
     params: t.Object({ token: t.String() }),
