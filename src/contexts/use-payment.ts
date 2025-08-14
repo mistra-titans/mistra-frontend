@@ -34,8 +34,8 @@ export const usePayment = () => {
 export const useClaimPayment = () => {
   const claimPayment = useMutation({
     mutationKey: ["claimPayment"],
-    mutationFn: async ({ token }: { token: string }) => {
-      const res = await API.post(`/payment/redeem/${token}`);
+    mutationFn: async ({ token, account_number }: { token: string, account_number: string }) => {
+      const res = await API.post(`/payment/redeem/${token}?account_number=${account_number}`);
       return res.data;
     },
   });

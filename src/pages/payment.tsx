@@ -3,6 +3,8 @@ import AdminLayout from "../components/layout";
 import { CreditCard, QrCode, X, Camera } from "lucide-react";
 import Button from "../components/button";
 import Card from "../components/card";
+import Modal from "../components/modal";
+import Input from "../components/Input";
 import { usePayment, useClaimPayment } from "../contexts/use-payment";
 import { Html5QrcodeScanner } from "html5-qrcode";
 
@@ -22,6 +24,15 @@ const Payment = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [scanResult, setScanResult] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  
+  // Modal states
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [showAccountInputModal, setShowAccountInputModal] = useState(false);
+  const [accountInputValue, setAccountInputValue] = useState("");
+  const [pendingToken, setPendingToken] = useState<string | null>(null);
 
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const scannerElementId = "qr-reader";
@@ -96,6 +107,16 @@ const Payment = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const showError = (message: string) => {
+    setErrorMessage(message);
+    setShowErrorModal(true);
+  };
+
+  const showSuccess = (message: string) => {
+    setSuccessMessage(message);
+    setShowSuccessModal(true);
+  };
+
   const handleSubmit = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
 
@@ -122,7 +143,7 @@ const Payment = () => {
 
     } catch (error: any) {
       console.error("Payment submission error:", error);
-      alert(error?.response?.data?.message || "Payment failed. Please try again.");
+      showError(error?.response?.data?.message || "Payment failed. Please try again.");
     }
   };
 
@@ -172,7 +193,7 @@ const Payment = () => {
         setIsScanning(true);
       } catch (error) {
         console.error("Error initializing QR scanner:", error);
-        alert("Failed to initialize camera. Please make sure you have granted camera permissions.");
+        showError("Failed to initialize camera. Please make sure you have granted camera permissions.");
       }
     }
   }, []);
@@ -221,24 +242,35 @@ const Payment = () => {
       token = tokenString.replace('payment-token:', '');
     }
     
-    try {
-      // Get user's account number (you might want to get this from user context)
-      const accountNumber = prompt('Enter your account number to claim this payment:');
-      
-      if (!accountNumber) {
-        alert('Account number is required to claim payment');
-        return;
-      }
+    // Store the token and show account input modal
+    setPendingToken(token);
+    setShowAccountInputModal(true);
+  };
 
+  const handleAccountSubmit = async () => {
+    if (!accountInputValue.trim()) {
+      showError('Account number is required to claim payment');
+      return;
+    }
+
+    if (!pendingToken) {
+      showError('Invalid payment token');
+      return;
+    }
+
+    try {
       // Call the redeem API
-      const result = await claimPayment.mutateAsync({ token });
+      const result = await claimPayment.mutateAsync({ token: pendingToken, account_number: accountInputValue  });
       
-      alert('Payment claimed successfully!');
+      showSuccess('Payment claimed successfully!');
+      setShowAccountInputModal(false);
+      setAccountInputValue("");
+      setPendingToken(null);
       handleScannerClose();
       
     } catch (error: any) {
       console.error('Error claiming payment:', error);
-      alert(error?.response?.data?.message || 'Failed to claim payment');
+      showError(error?.response?.data?.message || 'Failed to claim payment');
     }
   };
 
@@ -485,6 +517,98 @@ const Payment = () => {
           </div>
         </div>
       )}
+
+      {/* Account Input Modal */}
+      <Modal
+        isOpen={showAccountInputModal}
+        onClose={() => {
+          setShowAccountInputModal(false);
+          setAccountInputValue("");
+          setPendingToken(null);
+        }}
+        title="Enter Account Number"
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600 text-sm">
+            Enter your account number to claim this payment:
+          </p>
+          
+          <Input
+            type="text"
+            value={accountInputValue}
+            onChange={(e) => setAccountInputValue(e.target.value)}
+            placeholder="Enter your account number"
+            className="w-full"
+          />
+          
+          <div className="flex gap-3 pt-4">
+            <button
+              onClick={() => {
+                setShowAccountInputModal(false);
+                setAccountInputValue("");
+                setPendingToken(null);
+              }}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleAccountSubmit}
+              disabled={claimPayment.isPending || !accountInputValue.trim()}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {claimPayment.isPending ? 'Claiming...' : 'Claim Payment'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Error Modal */}
+      <Modal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title="Error"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
+              <X className="w-6 h-6 text-red-600" />
+            </div>
+          </div>
+          <p className="text-gray-600 text-center">{errorMessage}</p>
+          <button
+            onClick={() => setShowErrorModal(false)}
+            className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            OK
+          </button>
+        </div>
+      </Modal>
+
+      {/* Success Modal */}
+      <Modal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Success"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-4">
+              <QrCode className="w-6 h-6 text-green-600" />
+            </div>
+          </div>
+          <p className="text-gray-600 text-center">{successMessage}</p>
+          <button
+            onClick={() => setShowSuccessModal(false)}
+            className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            OK
+          </button>
+        </div>
+      </Modal>
     </AdminLayout>
   );
 };
