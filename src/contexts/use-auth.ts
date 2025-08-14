@@ -13,7 +13,7 @@ export const useAuth = () => {
   const login = useMutation({
     mutationKey: ["user"],
     mutationFn: async ({
-      phone_or_email,   
+      phone_or_email,
       password,
     }: {
       phone_or_email: string;
@@ -37,10 +37,14 @@ export const useAuth = () => {
       last_name: String;
       email: String;
       password: String;
-
-
     }) => {
-      const res = await API.post("/auth/register", { phone, password,first_name,last_name,email });
+      const res = await API.post("/auth/register", {
+        phone,
+        password,
+        first_name,
+        last_name,
+        email,
+      });
       return res.data;
     },
   });
@@ -52,5 +56,5 @@ export const useAuth = () => {
     },
   });
 
-  return { user, login,logout,signup };
+  return { user, login, logout, signup };
 };

@@ -46,10 +46,26 @@ export const useAccount = (account_number?: string) => {
     },
   });
 
+  // Verify credit
+  const verifyCredit = useMutation({
+    mutationKey: ["verifyCredit"],
+    mutationFn: async ({
+      otp,
+      reference,
+    }: {
+      otp: string;
+      reference: string;
+    }) => {
+      const res = await API.post("/account/credit/verify", { otp, reference });
+      return res.data;
+    },
+  });
+
   return {
     account,
     accounts,
     balance,
     createAccount,
+    verifyCredit,
   };
 };

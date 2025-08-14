@@ -55,7 +55,7 @@ const Input: React.FC<InputProps> = ({
         autoComplete={autoComplete}
         className={`w-full ${
           icon ? "pl-11" : "pl-4"
-        } pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50/50 disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+        } pr-8 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50/50 disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
         placeholder={placeholder}
         style={{ height }}
       />

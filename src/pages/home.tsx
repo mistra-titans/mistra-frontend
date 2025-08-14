@@ -3,20 +3,50 @@ import Button from "../components/button";
 import AdminLayout from "../components/layout";
 import Card from "../components/card";
 import AccountCard from "../components/AccountCard";
-import Modal from "../components/modal"; // Import the Modal component
+import Modal from "../components/modal";
+import Input from "../components/Input"; // Import the Input component
+import OTPModal from "../components/OTPmodal"; // Import the OTP Modal
 import { useSwipeable } from "react-swipeable";
 import { useAccount } from "../contexts/use-account";
+import { useTransaction } from "../contexts/use-transactions";
+import { useCreditAccount } from "../contexts/use-creditAccount";
 import Toast from "../components/Toast";
 
 const HomePage: React.FC = () => {
   const [currentCardIndex, setCurrentCardIndex] = React.useState(0);
-  const [isAddWalletModalOpen, setIsAddWalletModalOpen] = React.useState(false); // Modal state
+  const [isAddWalletModalOpen, setIsAddWalletModalOpen] = React.useState(false);
+  const [isTransferModalOpen, setIsTransferModalOpen] = React.useState(false); // Transfer modal state
+  const [isTopUpModalOpen, setIsTopUpModalOpen] = React.useState(false); // Top Up modal state
+  const [isOTPModalOpen, setIsOTPModalOpen] = React.useState(false); // OTP modal state
   const [walletName, setWalletName] = React.useState("");
   const [walletCurrency, setWalletCurrency] = React.useState("");
-  const { createAccount, accounts } = useAccount();
+  const { createAccount, accounts, verifyCredit } = useAccount(); // Add verifyCredit
+  const { createTransaction } = useTransaction();
+  const { creditAccount } = useCreditAccount();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showToast, setShowToast] = useState(false);
+
+  // OTP related state
+  const [otpReference, setOtpReference] = useState("");
+  const [pendingTopUpData, setPendingTopUpData] = useState<any>(null);
+
+  // Transfer form state
+  const [transferData, setTransferData] = useState({
+    recipient_account: "",
+    sender_account: "",
+    amount: 1,
+    currency: "",
+    type: "",
+  });
+
+  const [topUpData, setTopUpData] = useState({
+    account_number: "",
+    amount: 1,
+    phone: "",
+    currency: "",
+    provider: "", // Add this field
+  });
 
   const handleCreateWallet = async () => {
     if (!walletName.trim() || !walletCurrency) {
@@ -45,6 +75,182 @@ const HomePage: React.FC = () => {
       setError(error?.message || "Error creating wallet");
       setShowToast(true);
     }
+  };
+
+  const handleTransfer = async () => {
+    if (
+      !transferData.recipient_account.trim() ||
+      !transferData.sender_account.trim() ||
+      !transferData.amount ||
+      !transferData.currency ||
+      !transferData.type
+    ) {
+      setError("Please fill in all fields");
+      setShowToast(true);
+      return;
+    }
+    // console.log(transferData);
+
+    try {
+      // Add your transfer logic here
+
+      createTransaction.mutate(transferData, {
+        onSuccess: () => {
+          setSuccess("Transaction successful!");
+          setShowToast(true);
+        },
+        onError: (error: any) => {
+          setError(error?.message || "Registration failed");
+          setShowToast(true);
+        },
+      });
+
+      // setSuccess("Transfer completed successfully");
+      // setShowToast(true);
+    } catch (error: any) {
+      console.error("Error processing transfer:", error);
+      setError(error?.message || "Error processing transfer");
+      setShowToast(true);
+    }
+  };
+
+  const handleTopUp = async () => {
+    if (
+      !topUpData.phone.trim() ||
+      !topUpData.amount ||
+      !topUpData.currency ||
+      !topUpData.account_number ||
+      !topUpData.provider
+    ) {
+      setError("Please fill in all fields");
+      setShowToast(true);
+      return;
+    }
+
+    try {
+      const payload = {
+        account_number: topUpData.account_number,
+        amount: topUpData.amount,
+        phone: topUpData.phone,
+        currency: topUpData.currency,
+        provider: topUpData.provider,
+      };
+
+      creditAccount.mutate(payload, {
+        onSuccess: (response) => {
+          console.log(response);
+
+          if (response?.data?.action === "otp") {
+            setOtpReference(response.data.reference);
+            setPendingTopUpData(payload);
+            setIsTopUpModalOpen(false);
+            setIsOTPModalOpen(true);
+          } else if (response?.data?.action === "ussd") {
+            // Use the reference from the response, not otpReference
+            verifyCredit.mutate(
+              {
+                otp: "",
+                reference: response.data.reference, // ✅ Fixed
+              },
+              {
+                onSuccess: () => {
+                  // Handle verification success
+                  setSuccess("Top up successful!");
+                  setShowToast(true);
+                  accounts.refetch();
+
+                  // Reset form and close modal
+                  setTopUpData({
+                    account_number: "",
+                    amount: 1,
+                    phone: "",
+                    currency: "",
+                    provider: "",
+                  });
+                  setIsTopUpModalOpen(false);
+                },
+                onError: (verifyError: any) => {
+                  setError(verifyError?.message || "Verification failed");
+                  setShowToast(true);
+                },
+              }
+            );
+          } else {
+            // Handle other success cases or direct success
+            setSuccess("Top up successful!");
+            setShowToast(true);
+            accounts.refetch();
+
+            setTopUpData({
+              account_number: "",
+              amount: 1,
+              phone: "",
+              currency: "",
+              provider: "",
+            });
+            setIsTopUpModalOpen(false);
+          }
+        },
+        onError: (error: any) => {
+          setError(error?.message || "Top up failed");
+          setShowToast(true);
+        },
+      });
+    } catch (error: any) {
+      console.error("Error processing top up:", error);
+      setError(error?.message || "Error processing top up");
+      setShowToast(true);
+    }
+  };
+  // Handle OTP verification
+  const handleOTPVerification = async (otpValue: string) => {
+    if (!otpReference || !otpValue) {
+      setError("Invalid OTP or reference");
+      setShowToast(true);
+      return;
+    }
+
+    verifyCredit.mutate(
+      {
+        otp: otpValue,
+        reference: otpReference,
+      },
+      {
+        onSuccess: () => {
+          // Success
+          setSuccess("Top up completed successfully!");
+          setShowToast(true);
+
+          // Refetch accounts to update balances
+          accounts.refetch();
+
+          // Reset everything and close modals
+          setTopUpData({
+            account_number: "",
+            amount: 1,
+            phone: "",
+            currency: "",
+            provider: "",
+          });
+          setIsOTPModalOpen(false);
+          setOtpReference("");
+          setPendingTopUpData(null);
+        },
+        onError: (error: any) => {
+          setError(error?.message || "OTP verification failed");
+          setShowToast(true);
+        },
+      }
+    );
+  };
+
+  // Handle OTP modal close
+  const handleOTPModalClose = () => {
+    setIsOTPModalOpen(false);
+    setOtpReference("");
+    setPendingTopUpData(null);
+    // Optionally reopen the top up modal
+    setIsTopUpModalOpen(true);
   };
 
   const handlers = useSwipeable({
@@ -89,17 +295,16 @@ const HomePage: React.FC = () => {
   // Get currency symbol based on currency code
   const getCurrencySymbol = (currency: string) => {
     switch (currency) {
-      case "GHS":
       case "GHC":
-        return "₵";
-      case "USD":
-        return "$";
-      case "EUR":
-        return "€";
-      case "GBP":
-        return "£";
-      case "NGN":
-        return "₦";
+        return "GHC";
+      // case "USD":
+      //   return "$";
+      // case "EUR":
+      //   return "€";
+      // case "GBP":
+      //   return "£";
+      // case "NGN":
+      //   return "₦";
       default:
         return "";
     }
@@ -173,6 +378,7 @@ const HomePage: React.FC = () => {
                     <div className="i-solar:transfer-horizontal-bold-duotone size-5" />
                   }
                   height="44px"
+                  onClick={() => setIsTransferModalOpen(true)} // Open transfer modal
                 />
                 <Button
                   name="Pay Bills"
@@ -187,6 +393,7 @@ const HomePage: React.FC = () => {
                     <div className="i-solar:wallet-money-bold-duotone size-5" />
                   }
                   height="44px"
+                  onClick={() => setIsTopUpModalOpen(true)} // Open top up modal
                 />
                 <Button
                   name="Withdraw"
@@ -211,7 +418,7 @@ const HomePage: React.FC = () => {
                   }
                   width="140px"
                   height="36px"
-                  onClick={() => setIsAddWalletModalOpen(true)} // Open modal on click
+                  onClick={() => setIsAddWalletModalOpen(true)}
                 />
               </div>
             </div>
@@ -283,7 +490,7 @@ const HomePage: React.FC = () => {
           isOpen={isAddWalletModalOpen}
           onClose={() => setIsAddWalletModalOpen(false)}
           title="Add New Wallet"
-          size="md"
+          size="xl"
         >
           <div className="space-y-4">
             <p className="text-gray-600">
@@ -314,7 +521,7 @@ const HomePage: React.FC = () => {
                   className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50/50"
                 >
                   <option value="">Select currency</option>
-                  <option value="GHS">GHS - Ghanaian Cedi (₵)</option>
+                  <option value="GHC">GHS - Ghanaian Cedi (₵)</option>
                   <option value="USD">USD - US Dollar ($)</option>
                   <option value="EUR">EUR - Euro (€)</option>
                   <option value="GBP">GBP - British Pound (£)</option>
@@ -346,7 +553,324 @@ const HomePage: React.FC = () => {
             </div>
           </div>
         </Modal>
+
+        {/* Transfer Modal */}
+        <Modal
+          isOpen={isTransferModalOpen}
+          onClose={() => setIsTransferModalOpen(false)}
+          title="Transfer Money"
+          size="xl"
+        >
+          <div className="space-y-4">
+            <p className="text-gray-600">
+              Transfer money between accounts securely.
+            </p>
+
+            <div className="space-y-4">
+              <div className="flex gap-3 pt-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 ">
+                    Sender Account
+                  </label>
+                  <select
+                    value={transferData.sender_account}
+                    onChange={(e) =>
+                      setTransferData((prev) => ({
+                        ...prev,
+                        sender_account: e.target.value,
+                      }))
+                    }
+                    className="w-full p-3 pr-6 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50/50"
+                  >
+                    <option value="">Select sender account</option>
+                    {accounts.data?.data?.map((account: any) => (
+                      <option key={account.id} value={account.account_number}>
+                        {account.account_number}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 ml-4">
+                    Recipient Account
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="Enter recipient account number"
+                    value={transferData.recipient_account}
+                    onChange={(e) =>
+                      setTransferData((prev) => ({
+                        ...prev,
+                        recipient_account: e.target.value,
+                      }))
+                    }
+                    className="ml-2"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Amount
+                </label>
+                <Input
+                  type="number"
+                  placeholder="Enter amount"
+                  value={transferData.amount.toString()}
+                  onChange={(e) =>
+                    setTransferData((prev) => ({
+                      ...prev,
+                      amount: parseFloat(e.target.value) || 0,
+                    }))
+                  }
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Currency
+                </label>
+                <select
+                  value={transferData.currency}
+                  onChange={(e) =>
+                    setTransferData((prev) => ({
+                      ...prev,
+                      currency: e.target.value,
+                    }))
+                  }
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50/50"
+                >
+                  <option value="">Select currency</option>
+                  <option value="GHC">GHS - Ghanaian Cedi (₵)</option>
+                  {/* <option value="USD">USD - US Dollar ($)</option>
+                  <option value="EUR">EUR - Euro (€)</option>
+                  <option value="GBP">GBP - British Pound (£)</option>
+                  <option value="NGN">NGN - Nigerian Naira (₦)</option> */}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Transfer Type
+                </label>
+                <select
+                  value={transferData.type}
+                  onChange={(e) =>
+                    setTransferData((prev) => ({
+                      ...prev,
+                      type: e.target.value,
+                    }))
+                  }
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50/50"
+                >
+                  <option value="">Select transfer type</option>
+                  <option value="TRANSFER">Transfer</option>
+
+                  <option value="wire">Wire Transfer</option>
+                  <option value="instant">Instant Transfer</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button
+                name="Cancel"
+                onClick={() => {
+                  setTransferData({
+                    recipient_account: "",
+                    sender_account: "",
+                    amount: 1,
+                    currency: "",
+                    type: "",
+                  });
+                  setIsTransferModalOpen(false);
+                }}
+                className="!bg-gray-500 hover:!bg-gray-600"
+              />
+              <Button
+                name="Transfer"
+                disabled={
+                  !transferData.recipient_account.trim() ||
+                  !transferData.sender_account.trim() ||
+                  !transferData.amount ||
+                  !transferData.currency ||
+                  !transferData.type
+                }
+                onClick={handleTransfer}
+                loading={createTransaction.isPending}
+              />
+            </div>
+          </div>
+        </Modal>
+
+        {/* Top Up Modal */}
+        <Modal
+          isOpen={isTopUpModalOpen}
+          onClose={() => setIsTopUpModalOpen(false)}
+          title="Top Up Account"
+          size="xl"
+        >
+          <div className="space-y-4">
+            <p className="text-gray-600">
+              Add money to your account via mobile money.
+            </p>
+
+            <div className="space-y-4">
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Account to Credit
+                  </label>
+                  <select
+                    value={topUpData.account_number}
+                    onChange={(e) =>
+                      setTopUpData((prev) => ({
+                        ...prev,
+                        account_number: e.target.value,
+                      }))
+                    }
+                    className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50/50"
+                  >
+                    <option value="">Select account to credit</option>
+                    {accounts.data?.data?.map((account: any) => (
+                      <option key={account.id} value={account.account_number}>
+                        {account.account_number}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Amount
+                  </label>
+                  <Input
+                    type="number"
+                    placeholder="Enter amount"
+                    value={topUpData.amount.toString()}
+                    onChange={(e) =>
+                      setTopUpData((prev) => ({
+                        ...prev,
+                        amount: parseFloat(e.target.value) || 0,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Phone Number
+                </label>
+                <Input
+                  type="tel"
+                  placeholder="Enter phone number"
+                  value={topUpData.phone}
+                  onChange={(e) =>
+                    setTopUpData((prev) => ({
+                      ...prev,
+                      phone: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Currency
+                </label>
+                <select
+                  value={topUpData.currency}
+                  onChange={(e) =>
+                    setTopUpData((prev) => ({
+                      ...prev,
+                      currency: e.target.value,
+                    }))
+                  }
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50/50"
+                >
+                  <option value="">Select currency</option>
+                  <option value="GHC">GHS - Ghanaian Cedi (₵)</option>
+                  <option value="USD">USD - US Dollar ($)</option>
+                  <option value="EUR">EUR - Euro (€)</option>
+                  <option value="GBP">GBP - British Pound (£)</option>
+                  <option value="NGN">NGN - Nigerian Naira (₦)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mobile Money Provider
+                </label>
+                <select
+                  value={topUpData.provider || ""}
+                  onChange={(e) =>
+                    setTopUpData((prev) => ({
+                      ...prev,
+                      provider: e.target.value,
+                    }))
+                  }
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50/50"
+                >
+                  <option value="">Select provider</option>
+                  <option value="mtn">MTN Mobile Money</option>
+                  <option value="vodafone">Vodafone Cash</option>
+                  <option value="airteltigo">AirtelTigo Money</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button
+                name="Cancel"
+                onClick={() => {
+                  setTopUpData({
+                    account_number: "",
+                    amount: 1,
+                    phone: "",
+                    currency: "",
+                    provider: "",
+                  });
+                  setIsTopUpModalOpen(false);
+                }}
+                className="!bg-gray-500 hover:!bg-gray-600"
+              />
+              <Button
+                name="Top Up"
+                disabled={
+                  !topUpData.phone.trim() ||
+                  !topUpData.amount ||
+                  !topUpData.currency ||
+                  !topUpData.account_number ||
+                  !topUpData.provider ||
+                  creditAccount.isPending
+                }
+                loading={creditAccount.isPending}
+                onClick={handleTopUp}
+              />
+            </div>
+          </div>
+        </Modal>
+
+        {/* OTP Modal */}
+        <OTPModal
+          isOpen={isOTPModalOpen}
+          onClose={handleOTPModalClose}
+          onVerify={handleOTPVerification}
+          loading={verifyCredit.isPending}
+          paymentData={{
+            amount: pendingTopUpData?.amount,
+            account: pendingTopUpData?.account_number,
+            phone: pendingTopUpData?.phone,
+            provider: pendingTopUpData?.provider,
+          }}
+          title="Verify Top Up"
+          subtitle="Enter the OTP sent to your phone to complete the top up"
+          showTransactionSummary={true}
+          modalSize="md"
+        />
       </AdminLayout>
+
       {/* Toast for success and error messages */}
       {showToast && (error || success) && (
         <Toast

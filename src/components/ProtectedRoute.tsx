@@ -1,6 +1,6 @@
-import React from 'react';
-import { data, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/use-auth';
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/use-auth";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -8,23 +8,20 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { user } = useAuth();
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   // Show loading spinner while checking authentication
   if (user.isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8093EB]"></div>
-        </div>
-      );
-    }
-    if (user){
-      console.log(user)
-    }
-  
-    if (!user.data) {
-      navigate("/")
-    }
+      </div>
+    );
+  }
+
+  if (!user.data) {
+    navigate("/");
+  }
 
   // If user is authenticated (either in context or localStorage), render the protected component
   return <>{children}</>;

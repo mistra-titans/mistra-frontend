@@ -40,7 +40,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ closeSidebar }) => {
   const location = useLocation();
-  const { logout } = useAuth()
+  const { logout } = useAuth();
   const isActive = (to?: string) =>
     !!to && location.pathname.startsWith(to) && to !== "#";
   const navigate = useNavigate();
