@@ -12,6 +12,7 @@ import { transaction_otp } from "@/db/otp";
 import { users } from "@/db/user";
 import { sendOTPEmail } from "@/utils/mailer";
 import { createOTPpaylaod } from "@/utils/otp";
+import { publishTransactionMessage } from "@/service/rabbit";
 
 
 export const TRANSACTION_ROUTER = new Elysia({
@@ -201,27 +202,36 @@ export const TRANSACTION_ROUTER = new Elysia({
         }
         // TODO:
         // Enqueue Transaction if transaction is verified 
-        await tx.insert(ledger).values({
-          currency: txxn.currency as "GHC",
-          delta: -txxn.amount_base,
-          user_id: user.id,
-          transaction_id: txxn.id,
-          account: txxn.sender_account,
-          updated_at: new Date(),
-        })
-        // Recipient
-        await tx.insert(ledger).values({
-          currency: txxn.currency as "GHC",
-          delta: txxn.amount_base,
-          user_id: user.id,
-          transaction_id: txxn.id,
-          account: txxn.recipient_account,
-          updated_at: new Date(),
-        })
-        let [trans] = await tx.update(transactions)
-          .set({ status: "COMPLETED" })
-          .where(eq(transactions.id, txxn.id)).returning()
-        return SUCCESS(trans)
+        if (txxn.type === "TRANSFER") {
+          await publishTransactionMessage("transfer", txxn.id)
+        } else if (txxn.type === "DEPOSIT") {
+          await publishTransactionMessage("deposit", txxn.id)
+        }
+        else if (txxn.type === "WITHDRAWAL") {
+          await publishTransactionMessage("withdrawal", txxn.id)
+        }
+        console.log('Message published to queue')
+        // await tx.insert(ledger).values({
+        //   currency: txxn.currency as "GHC",
+        //   delta: -txxn.amount_base,
+        //   user_id: user.id,
+        //   transaction_id: txxn.id,
+        //   account: txxn.sender_account,
+        //   updated_at: new Date(),
+        // })
+        // // Recipient
+        // await tx.insert(ledger).values({
+        //   currency: txxn.currency as "GHC",
+        //   delta: txxn.amount_base,
+        //   user_id: user.id,
+        //   transaction_id: txxn.id,
+        //   account: txxn.recipient_account,
+        //   updated_at: new Date(),
+        // })
+        // let [trans] = await tx.update(transactions)
+        //   .set({ status: "COMPLETED" })
+        //   .where(eq(transactions.id, txxn.id)).returning()
+        return SUCCESS(txxn)
       })
     } catch (error) {
       set.status = 500
