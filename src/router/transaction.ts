@@ -98,6 +98,12 @@ export const TRANSACTION_ROUTER = new Elysia({
               throw INTERNAL_SERVER_ERROR("Sender account not found");
             }
 
+            const sender_accc = await replay(sender_account)
+
+            if (sender_accc.balance <= body.amount) {
+              throw new Error("Insufficient Balance")
+            }
+
             // Create transaction for sender
             const transaction = await tx.insert(transactions).values({
               user_id: user.id,

@@ -11,6 +11,7 @@ import { ledger } from "@/db/ledger";
 import { sendOTPEmail } from "@/utils/mailer";
 import { transaction_otp } from "@/db/otp";
 import { createOTPpaylaod } from "@/utils/otp";
+import { replay } from "@/utils/replay";
 
 
 const HMAC_SECRET = process.env.LINK_HMAC_SECRET!;
@@ -101,14 +102,14 @@ export const PAYMENT_ROUTER = new Elysia({
         amount: number,
         currency: "GHC" | "NGN" | "USD"
       };
-  
+
       const [payment] = await db.select().from(payments).where(eq(payments.id, id));
-  
+
       if (payment.amount !== amount) {
         set.status = 400;
         return BAD_REQUEST("Payment amount mismatch");
       }
-  
+
       const [updatedPayment] = await db
         .update(payments)
         .set({
@@ -116,8 +117,15 @@ export const PAYMENT_ROUTER = new Elysia({
         })
         .where(eq(payments.id, id))
         .returning();
-  
+
       await db.transaction(async (tx) => {
+
+        const sender_accc = await replay(query.account_number)
+
+        if (sender_accc.balance <= amount) {
+          throw new Error("Insufficient Balance")
+        }
+
         const [trans] = await tx.insert(transactions).values({
           user_id: user.id,
           amount_base: amount,
@@ -128,7 +136,7 @@ export const PAYMENT_ROUTER = new Elysia({
           status: "PENDING",
           updated_at: new Date(),
         }).returning()
-  
+
         // double log into ledger
         // Sender
         // await tx.insert(ledger).values({
@@ -149,7 +157,7 @@ export const PAYMENT_ROUTER = new Elysia({
         //   updated_at: new Date(),
         // })
         const [otp] = await tx.insert(transaction_otp).values(await createOTPpaylaod(trans.id)).returning()
-  
+
         try {
           const result = await sendOTPEmail({
             otpCode: otp.code,
@@ -157,8 +165,8 @@ export const PAYMENT_ROUTER = new Elysia({
             senderName: 'Mistra',
             subject: 'Your Transaction Verification Code'
           });
-  
-  
+
+
           // double log into ledger
           if (result.success) {
             console.log('OTP email sent successfully!', result.messageId);
@@ -169,7 +177,7 @@ export const PAYMENT_ROUTER = new Elysia({
           console.error('Unexpected error:', error);
         }
       })
-  
+
       return SUCCESS({
         payment_id: updatedPayment.id,
         amount: updatedPayment.amount,
