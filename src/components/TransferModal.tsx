@@ -33,7 +33,7 @@ const TransferModal: React.FC<TransferModalProps> = ({
 
   const [showOTPModal, setShowOTPModal] = useState(false);
   const [otpValue, setOtpValue] = useState("");
-  const [pendingTransactionId, setPendingTransactionId] = useState<string | null>(null);
+  const [_, setPendingTransactionId] = useState<string | null>(null);
 
   // OTP Verification mutation
   const verifyTransaction = useMutation({
