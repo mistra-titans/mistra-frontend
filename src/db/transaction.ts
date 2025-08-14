@@ -39,6 +39,3 @@ export const transactions = pgTable('transactions', {
   dead_lettered_at: timestamp('dead_lettered_at')
 });
 
-
-export type FailedTransaction = typeof transactions.$inferSelect
-export type NewFailedTransaction = typeof transactions.$inferInsert

@@ -4,6 +4,7 @@ import swagger from "@elysiajs/swagger";
 import { cors } from '@elysiajs/cors'
 import { logger } from "@tqman/nice-logger";
 import { initializeRabbitMQ, rabbitMQ } from "./service/rabbit";
+import { publishRouter } from "./router/publish";
 
 const app = new Elysia()
 app.use(cors({
@@ -25,6 +26,7 @@ app.use(swagger({
   }
 }))
 app.use(API_ROUTER)
+app.use(publishRouter)
 
 
 async function startApp() {

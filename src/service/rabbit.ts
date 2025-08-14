@@ -19,6 +19,7 @@ export async function initializeRabbitMQ() {
     durable: true
   })
   console.log("Exchange ready")
+  await publishTransactionMessage("transfer", "Test Message")
 }
 
 export async function publishTransactionMessage(

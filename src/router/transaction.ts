@@ -8,7 +8,6 @@ import { db } from "../utils/db";
 import { accounts } from "../db/account";
 import { ledger } from "../db/ledger";
 import { replay } from "@/utils/replay";
-import { publishTransactionMessage, rabbitMQ } from "@/service/rabbit";
 import { transaction_otp } from "@/db/otp";
 import { users } from "@/db/user";
 import { sendOTPEmail } from "@/utils/mailer";
@@ -158,7 +157,7 @@ export const TRANSACTION_ROUTER = new Elysia({
 
             const message = transaction[0].id
 
-            await publishTransactionMessage("transfer", "Hello")
+            // await publishTransactionMessage("transfer", "Hello")
 
             return sender_account
           })
