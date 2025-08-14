@@ -8,6 +8,7 @@ import { db } from "../utils/db";
 import { accounts } from "../db/account";
 import { ledger } from "../db/ledger";
 import { replay } from "@/utils/replay";
+import { publishTransactionMessage, rabbitMQ } from "@/service/rabbit";
 import { transaction_otp } from "@/db/otp";
 import { users } from "@/db/user";
 import { sendOTPEmail } from "@/utils/mailer";
@@ -76,6 +77,7 @@ export const TRANSACTION_ROUTER = new Elysia({
           if (!recipient_account || !sender_account) {
             return INTERNAL_SERVER_ERROR("Recipient account is required for transfers");
           }
+
           const _sender_account = await db.transaction(async (tx) => {
             // Find recipient account
             const recipient = await tx.select()
@@ -97,7 +99,7 @@ export const TRANSACTION_ROUTER = new Elysia({
             }
 
             // Create transaction for sender
-            const transacction = await tx.insert(transactions).values({
+            const transaction = await tx.insert(transactions).values({
               user_id: user.id,
               amount_base: amount,
               currency,
@@ -109,11 +111,11 @@ export const TRANSACTION_ROUTER = new Elysia({
               created_at: new Date(),
             }).returning();
 
-            if (transacction.length === 0) {
+            if (transaction.length === 0) {
               throw INTERNAL_SERVER_ERROR("Failed to record transaction");
             }
-            const [otp] = await tx.insert(transaction_otp).values(await createOTPpaylaod(transacction[0].id)).returning()
-            
+            const [otp] = await tx.insert(transaction_otp).values(await createOTPpaylaod(transaction[0].id)).returning()
+
             // TODO: This should be done on the queue
             try {
               const result = await sendOTPEmail({
@@ -123,6 +125,8 @@ export const TRANSACTION_ROUTER = new Elysia({
                 subject: 'Your Login Verification Code'
               });
 
+
+              // double log into ledger
               if (result.success) {
                 console.log('OTP email sent successfully!', result.messageId);
               } else {
@@ -138,7 +142,7 @@ export const TRANSACTION_ROUTER = new Elysia({
               currency: currency,
               delta: -amount,
               user_id: user.id,
-              transaction_id: transacction[0].id,
+              transaction_id: transaction[0].id,
               account: sender_account,
               updated_at: new Date(),
             })
@@ -147,10 +151,14 @@ export const TRANSACTION_ROUTER = new Elysia({
               currency: currency,
               delta: amount,
               user_id: user.id,
-              transaction_id: transacction[0].id,
+              transaction_id: transaction[0].id,
               account: recipient_account,
               updated_at: new Date(),
             })
+
+            const message = transaction[0].id
+
+            await publishTransactionMessage("transfer", "Hello")
 
             return sender_account
           })

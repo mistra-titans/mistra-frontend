@@ -19,9 +19,9 @@ export const RETRY_CONFIGS: Record<string, RetryConfig> = {
     maxDelay: 60000,
     backoffMultiplier: 2,
     retryableErrors: ['TIMEOUT', 'CONNECTION_ERROR', 'RATE_LIMIT', 'TEMPORARY_FAILURE'],
-    circuitBreaker: { 
-      threshold: 10, 
-      timeout: 120000 
+    circuitBreaker: {
+      threshold: 10,
+      timeout: 120000
     }
   },
   'subscription': {
