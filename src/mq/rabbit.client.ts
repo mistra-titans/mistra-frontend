@@ -74,16 +74,22 @@ export class RabbitMQService {
     }
   }
 
-  async getPublisher(publisherName: string = 'defualt'): Promise<Publisher> {
+  async getPublisher(
+    publisherName: string = 'default',
+    options: {
+      maxAttempts?: number;
+      confirm?: boolean;
+      exchanges?: any[];
+    } = {}
+  ): Promise<Publisher> {
     if (this.publishers.has(publisherName)) {
       return this.publishers.get(publisherName)!
     }
 
     const publisher = this.rabbit.createPublisher({
-      confirm: true,
-      maxAttempts: 3, //set max attempts for publishing
-      //ensure exchange exists before using the publisher
-      exchanges: []
+      confirm: options.confirm ?? true,
+      maxAttempts: options.maxAttempts ?? 3, // Set max retry attempts here
+      exchanges: options.exchanges ?? []
     })
 
     this.publishers.set(publisherName, publisher)
@@ -98,13 +104,78 @@ export class RabbitMQService {
   }
 
 
+  //declare an exchange
+  async declareExchange(
+    exchangeName: string,
+    exchangeType: 'direct' | 'topic' | 'fanout' | 'headers' = 'direct',
+    options: ExchangeOptions = {}
+  ): Promise<void> {
+    try {
+      // Create a temporary publisher to declare the exchange
+      const tempPublisher = this.rabbit.createPublisher({
+        confirm: true,
+        exchanges: [{
+          exchange: exchangeName,
+          type: exchangeType,
+          durable: options.durable ?? true,
+          autoDelete: options.autoDelete ?? false,
+          internal: options.internal ?? false,
+          arguments: options.arguments ?? {}
+        }]
+      });
+
+      //send some dummy data
+      await tempPublisher.send({ exchange: exchangeName, routingKey: '', mandatory: false }, Buffer.alloc(0));
+
+
+      // The exchange gets declared when the publisher is created
+      console.log(`Exchange '${exchangeName}' of type '${exchangeType}' declared successfully`);
+
+      // Close the temporary publisher immediately
+      await tempPublisher.close();
+    } catch (error) {
+      console.error(`Failed to declare exchange '${exchangeName}':`, error);
+      throw error;
+    }
+  }
+
+  //bind queue
+  async bindQueue(
+    queueName: string,
+    exchangeName: string,
+    routingKey: string = ''
+  ): Promise<void> {
+    try {
+      // Create a temporary consumer with binding to establish the binding
+      const tempConsumer = this.rabbit.createConsumer({
+        queue: queueName,
+        queueBindings: [{
+          exchange: exchangeName,
+          routingKey: routingKey
+        }]
+      }, async () => {
+        // Empty handler
+      });
+
+      console.log(`Queue '${queueName}' bound to exchange '${exchangeName}' with routing key '${routingKey}'`);
+
+      // Close the temporary consumer immediately
+      await tempConsumer.close();
+    } catch (error) {
+      console.error(`Failed to bind queue '${queueName}' to exchange '${exchangeName}':`, error);
+      throw error;
+    }
+  }
+
+
   //publish to exchange
   async publishToExchange(
+    publisherName: string,
     exchangeName: string,
     routingKey: string,
     message: any,
     options: Partial<Envelope> = {}): Promise<void> {
-    const publisher = await this.getPublisher()
+    const publisher = await this.getPublisher(publisherName)
 
     await publisher.send({
       exchange: exchangeName,

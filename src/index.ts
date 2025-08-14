@@ -3,6 +3,8 @@ import { API_ROUTER } from "./router/api";
 import swagger from "@elysiajs/swagger";
 import { cors } from '@elysiajs/cors'
 import { logger } from "@tqman/nice-logger";
+import { initializeRabbitMQ, rabbitMQ } from "./service/rabbit";
+import { publishRouter } from "./router/publish";
 
 const app = new Elysia()
 app.use(cors({
@@ -24,10 +26,32 @@ app.use(swagger({
   }
 }))
 app.use(API_ROUTER)
+app.use(publishRouter)
 
 
-  .listen(3000);
+async function startApp() {
+  try {
+    // Initialize RabbitMQ first
+    await initializeRabbitMQ()
 
+    // Start server
+    app.listen(3000, () => {
+      console.log('🚀 Server running on http://localhost:3000')
+    })
+  } catch (error) {
+    console.error('Failed to start app:', error)
+    process.exit(1)
+  }
+}
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('Shutting down...')
+  await rabbitMQ.close()
+  process.exit(0)
+})
+
+startApp()
 // console.log(
 //   `🦊 Elysia is running at ${app.server?.url}`
 // );
