@@ -2,14 +2,17 @@ import { ledger } from "@/db/ledger"
 import { db } from "./db"
 import { and, eq, inArray } from "drizzle-orm"
 import { accounts } from "@/db/account"
+import { transactions } from "@/db/transaction"
 
 
 export const replay = async (accnt_number: string): Promise<any> => {
   const total_amount = await db.transaction(async (tx) => {
     const logs = await db.select({ delta: ledger.delta, id: ledger.id }).from(ledger)
+      .leftJoin(transactions, eq(transactions.id, ledger.transaction_id))
       .where(and(
         eq(ledger.account, accnt_number),
-        eq(ledger.played, false)
+        eq(ledger.played, false),
+        eq(transactions.status, "COMPLETED")
       ))
     const total = logs.reduce((sum, { delta }) => sum + delta, 0);
     if (total == null || total == undefined) {
