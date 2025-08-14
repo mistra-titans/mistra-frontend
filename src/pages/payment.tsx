@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import AdminLayout from "../components/layout";
 import { CreditCard } from "lucide-react";
@@ -22,6 +21,9 @@ const Payment = () => {
     cardNumber: string;
     amount: string;
     description: string;
+    account?: string; // For OTP modal display
+    phone?: string;   // Optional for OTP modal
+    provider?: string; // Optional for OTP modal
   } | null>(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
 
@@ -105,27 +107,33 @@ const Payment = () => {
       return;
     }
 
-    // Store payment data and open modal for OTP verification
+    // Store payment data in format expected by OTP modal
     const data = {
       cardNumber,
       amount,
       description,
+      // Additional properties for OTP modal transaction summary
+      account: cardNumber, // Use cardNumber as account for display
     };
     setPaymentData(data);
     setIsModalOpen(true);
   };
 
-  // Handle OTP verification and actual payment
-  const handleOtpVerification = async (data: {
-    cardNumber: string;
-    amount: string;
-    description: string;
-  }) => {
+  // ✅ CORRECTED: Handle OTP verification - now takes only OTP string
+  const handleOtpVerification = async (otpValue: string) => {
+    if (!paymentData || !otpValue) {
+      alert("Invalid OTP or payment data");
+      return;
+    }
+
     try {
       setPaymentLoading(true);
       
-      // Your payment processing logic here
-      console.log("Processing payment:", data);
+      // Your payment processing logic here with OTP
+      console.log("Processing payment with OTP:", {
+        ...paymentData,
+        otp: otpValue
+      });
 
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -163,7 +171,7 @@ const Payment = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           email: "user@example.com", // You might want to pass this as prop
-          // transactionId: paymentData?.transactionId 
+          paymentData: paymentData // Include payment data for context
         }),
       });
       
@@ -315,7 +323,7 @@ const Payment = () => {
         </div>
       </div>
 
-      {/* OTP Modal using the new separate component */}
+      {/* ✅ CORRECTED: OTP Modal with all supported props */}
       <OTPModal
         isOpen={isModalOpen}
         onClose={handleModalClose}
@@ -331,7 +339,6 @@ const Payment = () => {
         closeOnEscape={true}
         showCloseButton={true}
         onResendOtp={handleResendOtp}
-        customOtpEndpoint="/api/verify-otp" // Update with your actual endpoint
       />
     </AdminLayout>
   );

@@ -98,12 +98,12 @@ const Sidebar: React.FC<SidebarProps> = ({ closeSidebar }) => {
       </nav>
       {/* Settings/Logout */}
       <div className="px-4 py-6 mt-auto flex flex-col gap-2 border-t border-gray-100">
-        <button className="flex items-center gap-3 px-4 py-2 rounded-lg text-base font-medium text-gray-500 hover:bg-[#8093EB]/10 text-left w-full">
+        {/* <button className="flex items-center gap-3 px-4 py-2 rounded-lg text-base font-medium text-gray-500 hover:bg-[#8093EB]/10 text-left w-full">
           <span className="text-lg flex items-center">
             <div className="i-solar:settings-bold-duotone size-5"></div>
           </span>
           Settings
-        </button>
+        </button> */}
         <button
           onClick={handleLogout}
           disabled={logout.isPending}

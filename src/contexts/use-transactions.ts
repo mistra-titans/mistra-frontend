@@ -10,7 +10,7 @@ export const useTransaction = () => {
     },
   });
 
-  // Create new account
+  // Create new transaction
   const createTransaction = useMutation({
     mutationKey: ["transaction"],
     mutationFn: async ({
@@ -36,5 +36,15 @@ export const useTransaction = () => {
       return res.data;
     },
   });
-  return { transaction, createTransaction};
+
+  // Verify transaction with OTP
+  const verifyTransaction = useMutation({
+    mutationKey: ["verifyTransaction"],
+    mutationFn: async (otp: string) => {
+      const res = await API.post(`/api/transaction/verify/${otp}`);
+      return res.data;
+    },
+  });
+
+  return { transaction, createTransaction, verifyTransaction };
 };
