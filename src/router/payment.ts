@@ -84,7 +84,6 @@ export const PAYMENT_ROUTER = new Elysia({
   }, {
     userAuth: true,
     body: t.Object({
-      payer_account: t.String(),
       recipient_account: t.String(),
       amount: t.Number(),
       currency: CURRENCY_EMUM,
