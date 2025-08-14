@@ -10,3 +10,9 @@ export function generateRandoms(length: number=14): string {
   const combined = (timePart + randomPart).slice(0, length);
   return combined.padEnd(length, Math.floor(Math.random() * 10).toString());
 }
+
+
+export function generateOTP(): string {
+  const otp = Math.floor(100000 + Math.random() * 900000);
+  return otp.toString();
+}

@@ -1,7 +1,7 @@
-import { generateRandoms } from "./util";
+import { generateOTP, generateRandoms } from "./util";
 
 
 export const createOTPpaylaod = async (transaction_id: string) => ({
   transaction_id,
-  code: generateRandoms(6)
+  code: generateOTP()
 })
