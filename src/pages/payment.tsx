@@ -1,33 +1,35 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import AdminLayout from "../components/layout";
-import { CreditCard } from "lucide-react";
+import { CreditCard, QrCode, X, Camera } from "lucide-react";
 import Button from "../components/button";
 import Card from "../components/card";
-import OTPModal from "../components/OTPmodal"; // Import the new OTP modal component
+import { usePayment, useClaimPayment } from "../contexts/use-payment";
+import { Html5QrcodeScanner } from "html5-qrcode";
 
 type PaymentErrors = {
-  cardNumber?: string;
+  recipientAccount?: string;
   amount?: string;
-  description?: string;
+  currency?: string;
 };
 
 const Payment = () => {
-  const [cardNumber, setCardNumber] = useState("");
+  const [recipientAccount, setRecipientAccount] = useState("");
   const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
+  const [currency, setCurrency] = useState("GHC");
   const [errors, setErrors] = useState<PaymentErrors>({});
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [paymentData, setPaymentData] = useState<{
-    cardNumber: string;
-    amount: string;
-    description: string;
-    account?: string; // For OTP modal display
-    phone?: string;   // Optional for OTP modal
-    provider?: string; // Optional for OTP modal
-  } | null>(null);
-  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentToken, setPaymentToken] = useState<string | null>(null);
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [scanResult, setScanResult] = useState<string | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
 
-  const formatCardNumber = (value: string) => {
+  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const scannerElementId = "qr-reader";
+
+  const { payment } = usePayment();
+  const { claimPayment } = useClaimPayment();
+
+  const formatAccountNumber = (value: string) => {
     const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "");
     const matches = v.match(/\d{4,16}/g);
     const match = (matches && matches[0]) || "";
@@ -42,41 +44,37 @@ const Payment = () => {
     }
   };
 
-  const handleCardNumberChange = (e: { target: { value: string } }) => {
-    const formatted = formatCardNumber(e.target.value);
-    setCardNumber(formatted);
-    if (errors.cardNumber) {
-      setErrors((prev) => ({ ...prev, cardNumber: "" }));
+  const handleRecipientAccountChange = (e: { target: { value: string } }) => {
+    const formatted = formatAccountNumber(e.target.value);
+    setRecipientAccount(formatted);
+    if (errors.recipientAccount) {
+      setErrors((prev) => ({ ...prev, recipientAccount: "" }));
     }
   };
 
-  const handleDescriptionChange = (e: {
-    target: { value: React.SetStateAction<string> };
-  }) => {
-    setDescription(e.target.value);
-    if (errors.description) {
-      setErrors((prev) => ({ ...prev, description: "" }));
-    }
-  };
-
-  const handleAmountChange = (e: {
-    target: { value: React.SetStateAction<string> };
-  }) => {
+  const handleAmountChange = (e: { target: { value: React.SetStateAction<string> } }) => {
     setAmount(e.target.value);
     if (errors.amount) {
       setErrors((prev) => ({ ...prev, amount: "" }));
     }
   };
 
+  const handleCurrencyChange = (e: { target: { value: React.SetStateAction<string> } }) => {
+    setCurrency(e.target.value);
+    if (errors.currency) {
+      setErrors((prev) => ({ ...prev, currency: "" }));
+    }
+  };
+
   const validateForm = () => {
     const newErrors: PaymentErrors = {};
 
-    // Validate card number (basic validation)
-    const cleanCardNumber = cardNumber.replace(/\s/g, "");
-    if (!cleanCardNumber) {
-      newErrors.cardNumber = "Card number is required";
-    } else if (cleanCardNumber.length < 13 || cleanCardNumber.length > 19) {
-      newErrors.cardNumber = "Please enter a valid card number";
+    // Validate recipient account
+    const cleanRecipientAccount = recipientAccount.replace(/\s/g, "");
+    if (!cleanRecipientAccount) {
+      newErrors.recipientAccount = "Recipient account is required";
+    } else if (cleanRecipientAccount.length < 10) {
+      newErrors.recipientAccount = "Please enter a valid account number";
     }
 
     // Validate amount
@@ -89,11 +87,9 @@ const Payment = () => {
       newErrors.amount = "Amount cannot exceed ₵100,000";
     }
 
-    // Validate description
-    if (!description.trim()) {
-      newErrors.description = "Description is required";
-    } else if (description.trim().length < 3) {
-      newErrors.description = "Description must be at least 3 characters";
+    // Validate currency
+    if (!currency) {
+      newErrors.currency = "Currency is required";
     }
 
     setErrors(newErrors);
@@ -107,94 +103,162 @@ const Payment = () => {
       return;
     }
 
-    // Store payment data in format expected by OTP modal
-    const data = {
-      cardNumber,
-      amount,
-      description,
-      // Additional properties for OTP modal transaction summary
-      account: cardNumber, // Use cardNumber as account for display
-    };
-    setPaymentData(data);
-    setIsModalOpen(true);
-  };
-
-  // ✅ CORRECTED: Handle OTP verification - now takes only OTP string
-  const handleOtpVerification = async (otpValue: string) => {
-    if (!paymentData || !otpValue) {
-      alert("Invalid OTP or payment data");
-      return;
-    }
-
     try {
-      setPaymentLoading(true);
-      
-      // Your payment processing logic here with OTP
-      console.log("Processing payment with OTP:", {
-        ...paymentData,
-        otp: otpValue
+      const result = await payment.mutateAsync({
+        recipient_account: recipientAccount.replace(/\s/g, ""),
+        amount: parseFloat(amount),
+        currency: currency,
+        method: "LINK",
       });
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Close modal on success
-      setIsModalOpen(false);
-      setPaymentData(null);
-
-      // Reset form
-      setCardNumber("");
-      setAmount("");
-      setDescription("");
-
-      alert("Payment successful!");
-    } catch (error) {
-      console.error("Payment submission error:", error);
-      alert("An unexpected error occurred. Please try again.");
-    } finally {
-      setPaymentLoading(false);
-    }
-  };
-
-  // Handle modal close
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setPaymentData(null);
-    setPaymentLoading(false);
-  };
-
-  // Custom resend OTP function
-  const handleResendOtp = async () => {
-    try {
-      const response = await fetch("/api/resend-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          email: "user@example.com", // You might want to pass this as prop
-          paymentData: paymentData // Include payment data for context
-        }),
-      });
-      
-      if (response.ok) {
-        alert("OTP has been resent to your email address");
-      } else {
-        throw new Error("Failed to resend OTP");
+      if (result?.data?.payment_token) {
+        setPaymentToken(result.data.payment_token);
+        setShowQRCode(true);
       }
-    } catch (error) {
-      alert("Failed to resend OTP. Please try again.");
+
+      setRecipientAccount("");
+      setAmount("");
+      setCurrency("GHC");
+
+    } catch (error: any) {
+      console.error("Payment submission error:", error);
+      alert(error?.response?.data?.message || "Payment failed. Please try again.");
     }
+  };
+
+  // Initialize QR Code Scanner
+  const initializeScanner = useCallback(() => {
+    if (!scannerRef.current) {
+      const config = {
+        fps: 10,
+        qrbox: {
+          width: 250,
+          height: 250,
+        },
+        aspectRatio: 1.0,
+        disableFlip: false,
+        supportedScanTypes: [],
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true
+        }
+      };
+
+      const onScanSuccess = (decodedText: string, decodedResult: any) => {
+        console.log(`QR Code scan result: ${decodedText}`, decodedResult);
+        setScanResult(decodedText);
+        setIsScanning(false);
+        
+        // Stop the scanner
+        if (scannerRef.current) {
+          scannerRef.current.clear().catch(error => {
+            console.error("Failed to clear scanner", error);
+          });
+        }
+      };
+
+      const onScanFailure = (error: string) => {
+        // Handle scan failure - this is called frequently, so we don't log it
+        // console.warn(`QR Code scan error: ${error}`);
+      };
+
+      try {
+        scannerRef.current = new Html5QrcodeScanner(
+          scannerElementId,
+          config,
+          /* verbose= */ false
+        );
+        
+        scannerRef.current.render(onScanSuccess, onScanFailure);
+        setIsScanning(true);
+      } catch (error) {
+        console.error("Error initializing QR scanner:", error);
+        alert("Failed to initialize camera. Please make sure you have granted camera permissions.");
+      }
+    }
+  }, []);
+
+  const stopScanner = useCallback(() => {
+    if (scannerRef.current) {
+      scannerRef.current.clear().catch(error => {
+        console.error("Failed to clear scanner", error);
+      }).finally(() => {
+        scannerRef.current = null;
+        setIsScanning(false);
+      });
+    }
+  }, []);
+
+  const handleScannerOpen = async () => {
+    setShowScanner(true);
+    setScanResult(null);
+    // Small delay to ensure the DOM element is rendered
+    setTimeout(() => {
+      initializeScanner();
+    }, 100);
+  };
+
+  const handleScannerClose = () => {
+    stopScanner();
+    setShowScanner(false);
+    setScanResult(null);
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(error => {
+          console.error("Failed to clear scanner on unmount", error);
+        });
+      }
+    };
+  }, []);
+
+  const handleTokenDetected = async (tokenString: string) => {
+    // Extract token from QR code data
+    let token = tokenString;
+    if (tokenString.startsWith('payment-token:')) {
+      token = tokenString.replace('payment-token:', '');
+    }
+    
+    try {
+      // Get user's account number (you might want to get this from user context)
+      const accountNumber = prompt('Enter your account number to claim this payment:');
+      
+      if (!accountNumber) {
+        alert('Account number is required to claim payment');
+        return;
+      }
+
+      // Call the redeem API
+      const result = await claimPayment.mutateAsync({ token });
+      
+      alert('Payment claimed successfully!');
+      handleScannerClose();
+      
+    } catch (error: any) {
+      console.error('Error claiming payment:', error);
+      alert(error?.response?.data?.message || 'Failed to claim payment');
+    }
+  };
+
+  const generateQRCode = (token: string) => {
+    const qrData = `payment-token:${token}`;
+    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}`;
+  };
+
+  const handleQRClose = () => {
+    setShowQRCode(false);
+    setPaymentToken(null);
   };
 
   return (
     <AdminLayout title="payment">
       <div className="p-4 min-h-screen">
-        {/* Main Content - Centered on mobile, side-by-side on desktop */}
         <div className="flex justify-center">
           <div className="w-full max-w-4xl">
-            {/* Using Card component for both image and form */}
             <Card width="w-full" className="max-w-4xl" height="h-auto">
               <div className="lg:flex lg:items-center lg:gap-8">
-                {/* Image - Only visible on desktop */}
                 <div className="hidden lg:flex lg:flex-1 lg:justify-center">
                   <div className="w-full max-w-lg">
                     <img
@@ -205,64 +269,56 @@ const Payment = () => {
                   </div>
                 </div>
 
-                {/* Payment Form */}
                 <div className="w-full lg:flex-1 lg:max-w-2xl">
                   <div className="flex flex-row justify-between">
                     <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6 text-center">
-                      Transaction
+                      Send Payment
                     </h2>
 
-                    <div className="min-w-16 min-h-16 sm:min-w-5 sm:min-h-5 bg-gradient-to-br from-indigo-600 rounded-full flex items-center justify-center animate-pulse -mt-3">
+                    {/* QR Scanner Button */}
+                    <div 
+                      onClick={handleScannerOpen}
+                      className="min-w-16 min-h-16 sm:min-w-5 sm:min-h-5 bg-gradient-to-br from-indigo-600 rounded-full flex items-center justify-center animate-pulse -mt-3 cursor-pointer hover:from-indigo-700 transition-colors"
+                      title="Scan QR Code to claim payment"
+                    >
                       <img
                         src="image_7.jpg"
-                        alt="qr code"
+                        alt="qr code scanner"
                         className="w-16 h-16 object-cover opacity-30 rounded-full"
                       />
                     </div>
                   </div>
 
-                  <form
-                    onSubmit={handleSubmit}
-                    className="space-y-4 sm:space-y-5"
-                  >
-                    {/* Card Number */}
+                  <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
                     <div>
                       <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
-                        Account Number
+                        Recipient Account Number
                       </label>
                       <div className="relative">
                         <input
                           type="text"
-                          value={cardNumber}
-                          onChange={handleCardNumberChange}
-                          placeholder="1234 5678 9012 3456"
+                          value={recipientAccount}
+                          onChange={handleRecipientAccountChange}
+                          placeholder="9876 5432 1098 7654"
                           maxLength={19}
                           className={`w-full pl-3 pr-10 py-3 sm:py-4 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm sm:text-base transition-colors bg-gray-50 focus:bg-white ${
-                            errors.cardNumber
-                              ? "border-red-300"
-                              : "border-gray-200"
+                            errors.recipientAccount ? "border-red-300" : "border-gray-200"
                           }`}
                         />
                         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                           <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400" />
                         </div>
                       </div>
-                      {errors.cardNumber && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {errors.cardNumber}
-                        </p>
+                      {errors.recipientAccount && (
+                        <p className="text-red-500 text-xs mt-1">{errors.recipientAccount}</p>
                       )}
                     </div>
 
-                    {/* Amount */}
-                    <div>
-                      <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
-                        Amount
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm sm:text-base font-medium">
-                          ₵
-                        </span>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                          Amount
+                        </label>
                         <input
                           type="number"
                           value={amount}
@@ -270,48 +326,52 @@ const Payment = () => {
                           placeholder="0.00"
                           step="0.01"
                           min="0"
-                          className={`w-full pl-7 pr-3 py-3 sm:py-4 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm sm:text-base transition-colors bg-gray-50 focus:bg-white ${
+                          className={`w-full px-3 py-3 sm:py-4 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm sm:text-base transition-colors bg-gray-50 focus:bg-white ${
                             errors.amount ? "border-red-300" : "border-gray-200"
                           }`}
                         />
+                        {errors.amount && (
+                          <p className="text-red-500 text-xs mt-1">{errors.amount}</p>
+                        )}
                       </div>
-                      {errors.amount && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {errors.amount}
-                        </p>
-                      )}
-                    </div>
 
-                    {/* Description */}
-                    <div>
-                      <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
-                        Description
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={description}
-                          onChange={handleDescriptionChange}
-                          placeholder="What's this payment for?"
-                          maxLength={100}
-                          className={`w-full pl-3 pr-10 py-3 sm:py-4 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm sm:text-base transition-colors bg-gray-50 focus:bg-white ${
-                            errors.description
-                              ? "border-red-300"
-                              : "border-gray-200"
+                      <div>
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                          Currency
+                        </label>
+                        <select
+                          value={currency}
+                          onChange={handleCurrencyChange}
+                          className={`w-full px-3 py-3 sm:py-4 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm sm:text-base transition-colors bg-gray-50 focus:bg-white ${
+                            errors.currency ? "border-red-300" : "border-gray-200"
                           }`}
-                        />
+                        >
+                          <option value="GHC">GHC (₵)</option>
+                          <option value="USD">USD ($)</option>
+                          <option value="EUR">EUR (€)</option>
+                          <option value="GBP">GBP (£)</option>
+                        </select>
+                        {errors.currency && (
+                          <p className="text-red-500 text-xs mt-1">{errors.currency}</p>
+                        )}
                       </div>
-                      {errors.description && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {errors.description}
-                        </p>
-                      )}
                     </div>
 
-                    {/* Send Payment Button */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                      <div className="flex items-center gap-2">
+                        <QrCode className="w-5 h-5 text-blue-600" />
+                        <p className="text-sm text-blue-800 font-medium">
+                          Payment Link Method
+                        </p>
+                      </div>
+                      <p className="text-xs text-blue-600 mt-1">
+                        A secure payment link will be generated that the recipient can use to claim the funds.
+                      </p>
+                    </div>
+
                     <Button
-                      name="Send Transaction"
-                      loading={false}
+                      name="Generate Payment Link"
+                      loading={payment.isPending}
                       type="submit"
                       className="w-full bg-blue-600 text-white px-4 py-4 sm:py-5 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base shadow-lg hover:shadow-xl transform active:scale-[0.98] touch-manipulation"
                     />
@@ -323,23 +383,108 @@ const Payment = () => {
         </div>
       </div>
 
-      {/* ✅ CORRECTED: OTP Modal with all supported props */}
-      <OTPModal
-        isOpen={isModalOpen}
-        onClose={handleModalClose}
-        onVerify={handleOtpVerification}
-        loading={paymentLoading}
-        paymentData={paymentData}
-        title="Verify Transaction"
-        subtitle="Enter the 6-digit OTP sent to your registered email address"
-        showTransactionSummary={true}
-        otpLength={6}
-        modalSize="md"
-        closeOnOverlayClick={false}
-        closeOnEscape={true}
-        showCloseButton={true}
-        onResendOtp={handleResendOtp}
-      />
+      {/* QR Scanner Modal */}
+      {showScanner && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Scan QR Code
+                </h3>
+                <button
+                  onClick={handleScannerClose}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+              
+              <p className="text-gray-600 mb-4 text-sm">
+                Point your camera at a payment QR code to claim the payment
+              </p>
+
+              {/* QR Scanner Container */}
+              <div className="relative bg-gray-100 rounded-xl overflow-hidden mb-4">
+                <div id={scannerElementId} className="w-full"></div>
+                
+                {/* Scanning status indicator */}
+                {isScanning && (
+                  <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                    SCANNING
+                  </div>
+                )}
+              </div>
+
+              {scanResult && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                  <p className="text-green-800 text-sm font-medium mb-2">
+                    QR Code Detected!
+                  </p>
+                  <p className="text-green-600 text-xs break-all mb-3">
+                    {scanResult}
+                  </p>
+                  <button
+                    onClick={() => handleTokenDetected(scanResult)}
+                    disabled={claimPayment.isPending}
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+                  >
+                    {claimPayment.isPending ? 'Claiming...' : 'Claim Payment'}
+                  </button>
+                </div>
+              )}
+
+              <div className="flex items-center justify-center gap-2 text-gray-500">
+                <Camera className="w-4 h-4" />
+                <span className="text-sm">
+                  {scanResult ? 'Payment token found' : isScanning ? 'Scanning for QR code...' : 'Initializing camera...'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* QR Code Generation Modal */}
+      {showQRCode && paymentToken && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="flex items-center justify-center mb-4">
+                <QrCode className="w-8 h-8 text-green-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Payment Token Generated
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Share this QR code with the recipient to claim the payment
+              </p>
+              
+              <div className="flex justify-center mb-6">
+                <img
+                  src={generateQRCode(paymentToken)}
+                  alt="Payment QR Code"
+                  className="w-64 h-64 border rounded-xl"
+                />
+              </div>
+              
+              <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                <p className="text-sm text-gray-600 mb-2">Payment Token:</p>
+                <p className="font-mono text-sm text-gray-900 break-all">
+                  {paymentToken}
+                </p>
+              </div>
+              
+              <button
+                onClick={handleQRClose}
+                className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 transition-colors"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 };
