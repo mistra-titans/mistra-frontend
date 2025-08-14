@@ -44,8 +44,8 @@ export async function sendOTPEmail(params: SendOTPParams): Promise<EmailResponse
   // Email configuration - replace with your SMTP settings
   const emailConfig: EmailConfig = {
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: false, // true for 465, false for other ports
+    port: parseInt(process.env.SMTP_PORT || '465'),
+    secure: true, // true for 465, false for other ports
     auth: {
       user: process.env.EMAIL_USER || 'your-email@gmail.com',
       pass: process.env.EMAIL_PASS || 'your-app-password'
