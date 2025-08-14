@@ -95,7 +95,7 @@ export const PAYMENT_ROUTER = new Elysia({
     }),
     detail: { summary: "Create Payment Link" }
   })
-  .get("/redeem/:token", async ({ params, set, user, query }) => {
+  .post("/redeem/:token", async ({ params, set, user, query }) => {
     try {
       const { token } = params;
       const { id, amount, currency } = verifyPaymentLink(token) as {
@@ -140,43 +140,45 @@ export const PAYMENT_ROUTER = new Elysia({
 
         // double log into ledger
         // Sender
-        // await tx.insert(ledger).values({
-        //   currency: currency,
-        //   delta: -amount,
-        //   user_id: user.id,
-        //   transaction_id: trans.id,
-        //   account: query.account_number,
-        //   updated_at: new Date(),
-        // })
-        // // Recipient
-        // await tx.insert(ledger).values({
-        //   currency: currency,
-        //   delta: amount,
-        //   user_id: user.id,
-        //   transaction_id: trans.id,
-        //   account: payment.recipient_account,
-        //   updated_at: new Date(),
-        // })
-        const [otp] = await tx.insert(transaction_otp).values(await createOTPpaylaod(trans.id)).returning()
+        await tx.insert(ledger).values({
+          currency: currency,
+          delta: -amount,
+          user_id: user.id,
+          transaction_id: trans.id,
+          account: query.account_number,
+          updated_at: new Date(),
+        })
+        // Recipient
+        await tx.insert(ledger).values({
+          currency: currency,
+          delta: amount,
+          user_id: user.id,
+          transaction_id: trans.id,
+          account: payment.recipient_account,
+          updated_at: new Date(),
+        })
 
-        try {
-          const result = await sendOTPEmail({
-            otpCode: otp.code,
-            userEmail: user.email,
-            senderName: 'Mistra',
-            subject: 'Your Transaction Verification Code'
-          });
+        await tx.update(transactions).set({status: "COMPLETED"}).where(eq(transactions.id, trans.id))
+        // const [otp] = await tx.insert(transaction_otp).values(await createOTPpaylaod(trans.id)).returning()
+
+        // try {
+        //   const result = await sendOTPEmail({
+        //     otpCode: otp.code,
+        //     userEmail: user.email,
+        //     senderName: 'Mistra',
+        //     subject: 'Your Transaction Verification Code'
+        //   });
 
 
-          // double log into ledger
-          if (result.success) {
-            console.log('OTP email sent successfully!', result.messageId);
-          } else {
-            console.error('Failed to send OTP email:', result.error);
-          }
-        } catch (error) {
-          console.error('Unexpected error:', error);
-        }
+        //   // double log into ledger
+        //   if (result.success) {
+        //     console.log('OTP email sent successfully!', result.messageId);
+        //   } else {
+        //     console.error('Failed to send OTP email:', result.error);
+        //   }
+        // } catch (error) {
+        //   console.error('Unexpected error:', error);
+        // }
       })
 
       return SUCCESS({
