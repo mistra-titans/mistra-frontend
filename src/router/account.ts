@@ -51,7 +51,7 @@ export const ACCOUNT_ROUTER = new Elysia({
         return res
       })
     )
-    console.log(result)
+    // console.log(result)
     return SUCCESS(result)
   }, { userAuth: true, detail: { summary: "Get All Accounts" } })
   .get("/:account_number", async ({ user, params, set }) => {

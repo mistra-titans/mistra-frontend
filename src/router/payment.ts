@@ -92,7 +92,8 @@ export const PAYMENT_ROUTER = new Elysia({
         LINK: "LINK",
         VCARD: "VCARD"
       })
-    })
+    }),
+    detail: { summary: "Create Payment Link" }
   })
   .get("/redeem/:token", async ({ params, set, user, query }) => {
     try {
@@ -192,5 +193,6 @@ export const PAYMENT_ROUTER = new Elysia({
   }, {
     userAuth: true,
     params: t.Object({ token: t.String() }),
-    query: t.Object({ account_number: t.String() })
+    query: t.Object({ account_number: t.String() }),
+    detail: { summary: "Redeem Payment Token" }
   })
