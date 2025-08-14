@@ -8,6 +8,9 @@ import { eq } from "drizzle-orm";
 import { BAD_REQUEST, INTERNAL_SERVER_ERROR, SUCCESS } from "@/utils/response";
 import { transactions } from "@/db/transaction";
 import { ledger } from "@/db/ledger";
+import { sendOTPEmail } from "@/utils/mailer";
+import { transaction_otp } from "@/db/otp";
+import { createOTPpaylaod } from "@/utils/otp";
 
 
 const HMAC_SECRET = process.env.LINK_HMAC_SECRET!;
@@ -128,23 +131,43 @@ export const PAYMENT_ROUTER = new Elysia({
 
       // double log into ledger
       // Sender
-      await tx.insert(ledger).values({
-        currency: currency,
-        delta: -amount,
-        user_id: user.id,
-        transaction_id: trans.id,
-        account: query.account_number,
-        updated_at: new Date(),
-      })
-      // Recipient
-      await tx.insert(ledger).values({
-        currency: currency,
-        delta: amount,
-        user_id: user.id,
-        transaction_id: trans.id,
-        account: payment.recipient_account,
-        updated_at: new Date(),
-      })
+      // await tx.insert(ledger).values({
+      //   currency: currency,
+      //   delta: -amount,
+      //   user_id: user.id,
+      //   transaction_id: trans.id,
+      //   account: query.account_number,
+      //   updated_at: new Date(),
+      // })
+      // // Recipient
+      // await tx.insert(ledger).values({
+      //   currency: currency,
+      //   delta: amount,
+      //   user_id: user.id,
+      //   transaction_id: trans.id,
+      //   account: payment.recipient_account,
+      //   updated_at: new Date(),
+      // })
+      const [otp] = await tx.insert(transaction_otp).values(await createOTPpaylaod(trans.id)).returning()
+
+      try {
+        const result = await sendOTPEmail({
+          otpCode: otp.code,
+          userEmail: user.email,
+          senderName: 'Mistra',
+          subject: 'Your Login Verification Code'
+        });
+
+
+        // double log into ledger
+        if (result.success) {
+          console.log('OTP email sent successfully!', result.messageId);
+        } else {
+          console.error('Failed to send OTP email:', result.error);
+        }
+      } catch (error) {
+        console.error('Unexpected error:', error);
+      }
     })
 
     return SUCCESS({

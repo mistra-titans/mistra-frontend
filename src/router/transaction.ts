@@ -138,25 +138,25 @@ export const TRANSACTION_ROUTER = new Elysia({
 
             // TODO: double log into ledger
             // Sender
-            await tx.insert(ledger).values({
-              currency: currency,
-              delta: -amount,
-              user_id: user.id,
-              transaction_id: transaction[0].id,
-              account: sender_account,
-              updated_at: new Date(),
-            })
-            // Recipient
-            await tx.insert(ledger).values({
-              currency: currency,
-              delta: amount,
-              user_id: user.id,
-              transaction_id: transaction[0].id,
-              account: recipient_account,
-              updated_at: new Date(),
-            })
+            // await tx.insert(ledger).values({
+            //   currency: currency,
+            //   delta: -amount,
+            //   user_id: user.id,
+            //   transaction_id: transaction[0].id,
+            //   account: sender_account,
+            //   updated_at: new Date(),
+            // })
+            // // Recipient
+            // await tx.insert(ledger).values({
+            //   currency: currency,
+            //   delta: amount,
+            //   user_id: user.id,
+            //   transaction_id: transaction[0].id,
+            //   account: recipient_account,
+            //   updated_at: new Date(),
+            // })
 
-            const message = transaction[0].id
+            // const message = transaction[0].id
 
             // await publishTransactionMessage("transfer", "Hello")
 
