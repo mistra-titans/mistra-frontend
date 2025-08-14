@@ -15,13 +15,13 @@ const navLinks: NavLink[] = [
     icon: <div className="i-solar:home-angle-2-bold-duotone size-5"></div>,
     to: "/home",
   },
-  {
-    label: "Activity",
-    icon: (
-      <div className="i-solar:point-on-map-perspective-bold-duotone size-5"></div>
-    ),
-    to: "/activity",
-  },
+  // {
+  //   label: "Activity",
+  //   icon: (
+  //     <div className="i-solar:point-on-map-perspective-bold-duotone size-5"></div>
+  //   ),
+  //   to: "/activity",
+  // },
   {
     label: "Payment",
     icon: <div className="i-solar:card-bold-duotone size-5"></div>,
