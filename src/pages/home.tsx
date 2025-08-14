@@ -9,6 +9,7 @@ import TopUpModal from "../components/TopUpModal";
 import { useSwipeable } from "react-swipeable";
 import { useAccount } from "../contexts/use-account";
 import Toast from "../components/Toast";
+import { useNavigate } from "react-router-dom";
 
 
 const HomePage: React.FC = () => {
@@ -22,6 +23,7 @@ const HomePage: React.FC = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showToast, setShowToast] = useState(false);
+  const navigate = useNavigate()
 
   const handleCreateWallet = async () => {
     if (!walletName.trim() || !walletCurrency) {
@@ -29,6 +31,7 @@ const HomePage: React.FC = () => {
       return;
     }
 
+    
     try {
       await createAccount.mutateAsync({
         name: walletName,
@@ -82,21 +85,21 @@ const HomePage: React.FC = () => {
 
   const accountCards = [
     {
-      totalBalance: "₵ 56,100",
+      totalBalance: "₵ ****",
       cardNumber: "**** **** **** 2415",
       cardHolder: "M. Wildan Wari",
       cardType: "visa",
       expiryDate: "12/25",
     },
     {
-      totalBalance: "₵ 23,450",
+      totalBalance: "₵ ****",
       cardNumber: "**** **** **** 8742",
       cardHolder: "M. Wildan Wari",
       cardType: "mastercard",
       expiryDate: "09/26",
     },
     {
-      totalBalance: "₵ 15,800",
+      totalBalance: "₵ ****",
       cardNumber: "**** **** **** 9631",
       cardHolder: "M. Wildan Wari",
       cardType: "visa",
@@ -185,7 +188,8 @@ const HomePage: React.FC = () => {
                   onClick={() => setIsTransferModalOpen(true)}
                 />
                 <Button
-                  name="Pay Bills"
+                  onClick={() => navigate("/payment")}
+                  name="Quick Pay"
                   icon={
                     <div className="i-solar:bill-list-bold-duotone size-5" />
                   }
